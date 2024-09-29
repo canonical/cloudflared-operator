@@ -9,8 +9,6 @@ import json
 import logging
 import time
 
-from pytest_operator.plugin import ops_test
-
 logger = logging.getLogger(__name__)
 
 
