@@ -156,13 +156,13 @@ SRC_OVERWRITE = json.dumps(
         "any_charm.py": textwrap.dedent(
             """\
             import ops
-            from cloudflared_route import CloudflaredRouteRequirer
+            from cloudflared_route import CloudflaredRouteProvider
             from any_charm_base import AnyCharmBase
 
             class AnyCharm(AnyCharmBase):
                 def __init__(self, *args, **kwargs):
                     super().__init__(*args, **kwargs)
-                    self.cloudflared_route = CloudflaredRouteRequirer(
+                    self.cloudflared_route = CloudflaredRouteProvider(
                         charm=self,
                         relation_name="provide-cloudflared-route"
                     )

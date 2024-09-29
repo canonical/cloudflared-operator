@@ -30,6 +30,7 @@ def wait_for_tunnel_healthy(cloudflare_api, tunnel_token):
         logger.info("tunnel status: %s", tunnel_status)
         if tunnel_status != "healthy":
             time.sleep(10)
+        else:
             return
     raise TimeoutError("timeout waiting for tunnel healthy")
 
