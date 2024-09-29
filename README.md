@@ -1,26 +1,28 @@
-<!--
-Avoid using this README file for information that is maintained or published elsewhere, e.g.:
+[![CharmHub Badge](https://charmhub.io/cloudflared/badge.svg)](https://charmhub.io/cloudflared)
+[![Publish to edge](https://github.com/canonical/cloudflared-operator/actions/workflows/publish_charm.yaml/badge.svg)](https://github.com/canonical/cloudflared-operator/actions/workflows/publish_charm.yaml)
+[![Promote charm](https://github.com/canonical/cloudflared-operator/actions/workflows/promote_charm.yaml/badge.svg)](https://github.com/canonical/cloudflared-operator/actions/workflows/promote_charm.yaml)
+[![Discourse Status](https://img.shields.io/discourse/status?server=https%3A%2F%2Fdiscourse.charmhub.io&style=flat&label=CharmHub%20Discourse)](https://discourse.charmhub.io)
 
-* metadata.yaml > published on Charmhub
-* documentation > published on (or linked to from) Charmhub
-* detailed contribution guide > documentation or CONTRIBUTING.md
+A [Juju](https://juju.is/) [charm](https://juju.is/docs/olm/charmed-operators) 
+for deploying and managing the [cloudflared](https://cloudflared-project.org) tunnel
+in your systems.
 
-Use links instead.
--->
+This charm simplifies the configuration and maintenance of `cloudflared` across a 
+range of environments, enabling proxies traffic from the Cloudflare network to your origins.
 
-# is-charms-template
+## Project and community
 
-Charmhub package name: operator-template
-More information: https://charmhub.io/is-charms-template
+The cloudflared Operator is a member of the Ubuntu family. It's an
+open source project that warmly welcomes community projects, contributions,
+suggestions, fixes and constructive feedback.
+* [Code of conduct](https://ubuntu.com/community/code-of-conduct)
+* [Get support](https://discourse.charmhub.io/)
+* [Join our online chat](https://matrix.to/#/#charmhub-charmdev:ubuntu.com)
+* [Contribute](https://charmhub.io/cloudflared/docs/contributing)
+* [Roadmap](https://charmhub.io/cloudflared/docs/roadmap)
+Thinking about using the cloudflared charm for your next project? [Get in touch](https://matrix.to/#/#charmhub-charmdev:ubuntu.com)!
 
-Describe your charm in one or two sentences.
+---
 
-## Other resources
-
-<!-- If your charm is documented somewhere else other than Charmhub, provide a link separately. -->
-
-- [Read more](https://example.com)
-
-- [Contributing](CONTRIBUTING.md) <!-- or link to other contribution documentation -->
-
-- See the [Juju SDK documentation](https://juju.is/docs/sdk) for more information about developing and improving charms.
+For further details,
+[see the charm's detailed documentation](https://charmhub.io/cloudflared/docs).

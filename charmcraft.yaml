@@ -2,12 +2,61 @@
 # See LICENSE file for licensing details.
 # This file configures Charmcraft.
 # See https://juju.is/docs/sdk/charmcraft-config for guidance.
-
+name: cloudflared
 type: charm
-bases:
-  - build-on:
-    - name: ubuntu
-      channel: "22.04"
-    run-on:
-    - name: ubuntu
-      channel: "22.04"
+summary: Cloudflared charm.
+subordinate: true
+
+links:
+  documentation: https://discourse.charmhub.io
+  issues: https://github.com/canonical/cloudflared-operator/issues
+  source: https://github.com/canonical/cloudflared-operator
+  contact: https://launchpad.net/~canonical-is-devops
+
+description: >-
+  A [Juju](https://juju.is/) [charm](https://juju.is/docs/olm/charmed-operators) 
+  for deploying and managing the [cloudflared](https://cloudflared-project.org) tunnel
+  in your systems.
+
+  This charm simplifies the configuration and maintenance of `cloudflared` across a 
+  range of environments, enabling proxies traffic from the Cloudflare network to your origins.
+
+config:
+  options:
+    tunnel-token:
+      description: >-
+        A juju secret ID, points to a juju secret containing the cloudflared tunnel-token.
+        You can create this juju secret by using the following command:
+        `juju add-secret my-token tunnel-token=<cloudflared-tunnel-token> && juju grant-secret my-token cloudflared`
+      type: secret
+
+requires:
+  cloudflared-route:
+    interface: cloudflared-route
+  juju-info:
+    interface: juju-info
+    scope: container
+
+provides:
+  cos-agent:
+    interface: cos_agent
+    limit: 1
+
+base: ubuntu@24.04
+build-base: ubuntu@24.04
+platforms:
+  amd64:
+parts:
+  charm:
+    build-snaps:
+      - rustup
+    override-build: |
+      rustup default stable
+      craftctl default
+    build-packages:
+      - libffi-dev
+      - libssl-dev
+      - pkg-config
+
+assumes:
+  - juju >= 3.3
