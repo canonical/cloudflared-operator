@@ -9,6 +9,7 @@
 
 import json
 import logging
+import os
 import pathlib
 import random
 import string
@@ -124,11 +125,10 @@ class CloudflareAPI:
 
 
 @pytest.fixture(scope="module")
-def cloudflare_api(pytestconfig: pytest.Config):
+def cloudflare_api():
     """Cloudflare API fixture."""
-    account_id = pytestconfig.getoption("--account-id")
-    api_token = pytestconfig.getoption("--api-token")
-    assert account_id and api_token
+    account_id = os.environ["CLOUDFLARE_ACCOUNT_ID"]
+    api_token = os.environ["CLOUDFLARE_API_TOKEN"]
     api = CloudflareAPI(account_id=account_id, api_token=api_token)
 
     yield api

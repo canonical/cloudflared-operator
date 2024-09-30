@@ -5,7 +5,7 @@ on:
 
 jobs:
   integration-tests:
-    uses: canonical/operator-workflows/.github/workflows/integration_test.yaml@main
+    uses: canonical/operator-workflows/.github/workflows/integration_test.yaml@secret-env
     secrets: inherit
     with:
       self-hosted-runner: true
@@ -13,6 +13,3 @@ jobs:
       charmcraft-channel: latest/edge
       provider: lxd
       juju-channel: 3.3/stable
-      extra-arguments: >-
-        --api-token=${{ secrets.CLOUDFLARE_API_TOKEN }}
-        --account-id=${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
