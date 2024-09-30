@@ -14,7 +14,6 @@ import pathlib
 import random
 import string
 import textwrap
-import time
 from datetime import datetime
 
 import juju.application
