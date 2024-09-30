@@ -14,6 +14,7 @@ import pathlib
 import random
 import string
 import textwrap
+import time
 from datetime import datetime
 
 import juju.application
@@ -134,7 +135,10 @@ def cloudflare_api():
     yield api
 
     for tunnel_id in api._created_tunnels:
-        api.delete_tunnel(tunnel_id)
+        try:
+            api.delete_tunnel(tunnel_id)
+        except requests.exceptions.RequestException:
+            logger.exception("failed to delete tunnel %s", tunnel_id)
 
 
 @pytest.fixture(scope="module", name="model")
