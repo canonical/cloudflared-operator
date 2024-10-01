@@ -1,7 +1,7 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-r"""# Interface Library for ingress.
+r"""# Interface Library for cloudflared_route.
 
 This library wraps relation endpoints using the `cloudflared_route` interface
 and provides a Python API for both requesting and providing cloudflared-route
