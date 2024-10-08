@@ -22,6 +22,9 @@ requires:
         interface: cloudflared_route
 ```
 """
+
+import logging
+
 import ops
 
 # The unique Charmhub library identifier, never change it
@@ -37,6 +40,8 @@ LIBPATCH = 1
 _TUNNEL_TOKEN_SECRET_ID_FIELD = "tunnel_token_secret_id"
 _TUNNEL_TOKEN_SECRET_VALUE_FIELD = "tunnel-token"
 DEFAULT_CLOUDFLARED_ROUTE_RELATION = "cloudflared-route"
+
+logger = logging.getLogger(__name__)
 
 
 class CloudflaredRouteProvider(ops.Object):
@@ -125,6 +130,7 @@ class CloudflaredRouteRequirer:
             relation_data = relation.data[relation.app]
             secret_id = relation_data.get(_TUNNEL_TOKEN_SECRET_ID_FIELD)
             if not secret_id:
+                logger.debug("waiting for data in cloudflared_route relation id %s", relation.id)
                 continue
             secret = self._charm.model.get_secret(id=secret_id)
             tunnel_token = secret.get_content(refresh=True)[_TUNNEL_TOKEN_SECRET_VALUE_FIELD]
