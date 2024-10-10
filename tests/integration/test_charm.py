@@ -90,7 +90,7 @@ async def test_cloudflared_route_integration(
     await action.wait()
     await model.wait_for_idle()
     # required for deploying in LXD containers
-    await ops_test.juju("exec", "--application", base_charm.name, "--", "sudo", "reboot")
+    await ops_test.juju("exec", "--application", cloudflared_charm.name, "--", "sudo", "reboot")
     await model.wait_for_idle()
     wait_for_tunnel_healthy(cloudflare_api, tunnel_token_1)
     wait_for_tunnel_healthy(cloudflare_api, tunnel_token_2)
