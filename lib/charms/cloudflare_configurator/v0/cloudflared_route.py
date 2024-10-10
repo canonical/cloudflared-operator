@@ -44,6 +44,10 @@ DEFAULT_CLOUDFLARED_ROUTE_RELATION = "cloudflared-route"
 logger = logging.getLogger(__name__)
 
 
+class InvalidIntegration(ValueError):
+    """Charm received invalid integration data."""
+
+
 class CloudflaredRouteProvider(ops.Object):
     """cloudflared-route provider."""
 
@@ -113,10 +117,18 @@ class CloudflaredRouteRequirer:
 
         Returns:
             cloudflared tunnel-token.
+
+        Raises:
+            InvalidIntegration: integration contains invalid data
         """
         relation_data = relation.data[relation.app]
         secret_id = relation_data.get(_TUNNEL_TOKEN_SECRET_ID_FIELD)
         if not secret_id:
             return None
         secret = self._charm.model.get_secret(id=secret_id)
-        return secret.get_content(refresh=True)[_TUNNEL_TOKEN_SECRET_VALUE_FIELD]
+        try:
+            return secret.get_content(refresh=True)[_TUNNEL_TOKEN_SECRET_VALUE_FIELD]
+        except KeyError as exc:
+            raise InvalidIntegration(
+                f"secret doesn't have '{_TUNNEL_TOKEN_SECRET_VALUE_FIELD}' field"
+            ) from exc

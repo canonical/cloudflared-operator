@@ -72,11 +72,11 @@ def test_cloudflared_route_integration(snaps, cloudflared_charm_cls):
     )
 
     assert snaps == {
-        f"charmed-cloudflared_relation{relation_1.id}": {
+        f"charmed-cloudflared_rel{relation_1.id}": {
             "tunnel-token": "foo",
             "metrics-port": 15300 + relation_1.id,
         },
-        f"charmed-cloudflared_relation{relation_2.id}": {
+        f"charmed-cloudflared_rel{relation_2.id}": {
             "tunnel-token": "bar",
             "metrics-port": 15300 + relation_2.id,
         },
@@ -109,4 +109,31 @@ def test_conflict_config_integration(cloudflared_charm_cls):
 
     assert out.unit_status == ops.BlockedStatus(
         "tunnel-token is provided by both the config and integration"
+    )
+
+
+def test_invalid_integration_data(cloudflared_charm_cls):
+    """
+    arrange: create a scenario with invalid data inside cloudflared-router integrations.
+    act: run the config-changed event.
+    assert: cloudflared charm should enter blocked state.
+    """
+    context = ops.testing.Context(cloudflared_charm_cls)
+    relation_secret = ops.testing.Secret(tracked_content={"token": "foo"})
+    relation = ops.testing.Relation(
+        "cloudflared-route",
+        remote_app_data={"tunnel_token_secret_id": relation_secret.id},
+    )
+
+    out = context.run(
+        context.on.config_changed(),
+        ops.testing.State(
+            secrets=[relation_secret],
+            relations=[relation],
+        ),
+    )
+
+    assert out.unit_status == ops.BlockedStatus(
+        "received invalid data from cloudflared-route integration: "
+        "secret doesn't have 'tunnel-token' field"
     )

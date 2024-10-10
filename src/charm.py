@@ -12,7 +12,10 @@ import subprocess  # nosec
 import typing
 
 import ops
-from charms.cloudflare_configurator.v0.cloudflared_route import CloudflaredRouteRequirer
+from charms.cloudflare_configurator.v0.cloudflared_route import (
+    CloudflaredRouteRequirer,
+    InvalidIntegration,
+)
 from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.operator_libs_linux.v2 import snap
 
@@ -21,6 +24,7 @@ logger = logging.getLogger(__name__)
 CLOUDFLARED_ROUTE_INTEGRATION_NAME = "cloudflared-route"
 # this is not a hardcoded password
 TUNNEL_TOKEN_CONFIG_NAME = "tunnel-token"  # nosec
+CHARMED_CLOUDFLARED_SNAP_NAME = "charmed-cloudflared"
 
 
 class InvalidConfig(ValueError):
@@ -66,9 +70,11 @@ class CloudflaredCharm(ops.CharmBase):
             logger.exception("charm received invalid configuration")
             self.unit.status = ops.BlockedStatus(str(exc))
             return
-        for remove_instance in self._installed_cloudflared_snaps() - metrics_ports.keys():
+
+        required_snap_instances = set(metrics_ports.keys())
+        for remove_instance in self._installed_cloudflared_snaps() - required_snap_instances:
             self._remove_cloudflared_snap(remove_instance)
-        for install_instance in metrics_ports.keys() - self._installed_cloudflared_snaps():
+        for install_instance in metrics_ports.keys() - required_snap_instances:
             self._install_cloudflared_snap(install_instance)
 
         for instance, tunnel_token in tunnel_tokens.items():
@@ -86,7 +92,7 @@ class CloudflaredCharm(ops.CharmBase):
         """Install the charmed-cloudflared snap.
 
         Args:
-            name: snap instance name (charmed-cloudflared_relation1 or charmed-cloudflared_config0)
+            name: snap instance name (e.g. charmed-cloudflared_rel1 or charmed-cloudflared_config0)
         """
         subprocess.check_call(  # nosec
             [
@@ -106,7 +112,7 @@ class CloudflaredCharm(ops.CharmBase):
         """Configure charmed-cloudflared snap.
 
         Args:
-            name: snap instance name (charmed-cloudflared_relation1 or charmed-cloudflared_config0)
+            name: snap instance name (e.g. charmed-cloudflared_rel1 or charmed-cloudflared_config0)
             config: charmed-cloudflared configuration.
         """
         charmed_cloudflared = snap.SnapCache()[name]
@@ -119,7 +125,7 @@ class CloudflaredCharm(ops.CharmBase):
         """Remove charmed-cloudflared snap.
 
         Args:
-            name: snap instance name (charmed-cloudflared_relation1 or charmed-cloudflared_config0)
+            name: snap instance name (e.g. charmed-cloudflared_rel1 or charmed-cloudflared_config0)
         """
         snap.remove(name)
 
@@ -132,7 +138,7 @@ class CloudflaredCharm(ops.CharmBase):
         installed_charmed_cloudflared = set()
         installed_snaps = self._snap_client.get_installed_snaps()
         for installed_snap in installed_snaps:
-            if installed_snap["name"].startswith("charmed-cloudflared"):
+            if installed_snap["name"].startswith(CHARMED_CLOUDFLARED_SNAP_NAME):
                 installed_charmed_cloudflared.add(installed_snap["name"])
         return installed_charmed_cloudflared
 
@@ -144,6 +150,7 @@ class CloudflaredCharm(ops.CharmBase):
 
         Raises:
             InvalidConfig: If the tunnel-token charm configuration is invalid.
+            RuntimeError: If the relation ID exceeds maximum allowed value.
         """
         tunnel_tokens = {}
         tunnel_token_config = typing.cast(str | None, self.config.get(TUNNEL_TOKEN_CONFIG_NAME))
@@ -151,16 +158,24 @@ class CloudflaredCharm(ops.CharmBase):
             try:
                 secret = self.model.get_secret(id=tunnel_token_config)
                 secret_value = secret.get_content(refresh=True)["tunnel-token"]
-                tunnel_tokens["charmed-cloudflared_config0"] = secret_value
+                tunnel_tokens[f"{CHARMED_CLOUDFLARED_SNAP_NAME}_config0"] = secret_value
             except (ops.SecretNotFoundError, ops.ModelError, KeyError) as exc:
                 raise InvalidConfig("invalid tunnel-token config") from exc
         relations = self.model.relations[CLOUDFLARED_ROUTE_INTEGRATION_NAME]
         if tunnel_tokens and relations:
             raise InvalidConfig("tunnel-token is provided by both the config and integration")
         for relation in relations:
-            tunnel_token = self._cloudflared_route.get_tunnel_token(relation)
+            try:
+                tunnel_token = self._cloudflared_route.get_tunnel_token(relation)
+            except InvalidIntegration as exc:
+                raise InvalidConfig(
+                    "received invalid data from "
+                    f"{CLOUDFLARED_ROUTE_INTEGRATION_NAME} integration: {exc}"
+                ) from exc
+            if relation.id > 999999:
+                raise RuntimeError("relation id exceeds maximum allowed value")
             if tunnel_token:
-                tunnel_tokens[f"charmed-cloudflared_relation{relation.id}"] = tunnel_token
+                tunnel_tokens[f"{CHARMED_CLOUDFLARED_SNAP_NAME}_rel{relation.id}"] = tunnel_token
         return tunnel_tokens
 
     def _get_instance_metrics_ports(self) -> dict[str, int]:
@@ -171,11 +186,13 @@ class CloudflaredCharm(ops.CharmBase):
         """
         metrics_ports = {}
         if self.config.get(TUNNEL_TOKEN_CONFIG_NAME):
-            metrics_ports["charmed-cloudflared_config0"] = 15299
+            metrics_ports[f"{CHARMED_CLOUDFLARED_SNAP_NAME}_config0"] = 15299
         for relation in self.model.relations[CLOUDFLARED_ROUTE_INTEGRATION_NAME]:
             if relation.app is None:
                 continue
-            metrics_ports[f"charmed-cloudflared_relation{relation.id}"] = 15300 + relation.id
+            metrics_ports[f"{CHARMED_CLOUDFLARED_SNAP_NAME}_rel{relation.id}"] = (
+                15300 + relation.id
+            )
         return metrics_ports
 
 
