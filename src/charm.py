@@ -109,7 +109,7 @@ class CloudflaredCharm(ops.CharmBase):
             config: charmed-cloudflared configuration.
         """
         charmed_cloudflared = snap.SnapCache()[name]
-        if all(charmed_cloudflared.get(key, typed=True) == value for key, value in config.items()):
+        if all(charmed_cloudflared.get(key) == str(value) for key, value in config.items()):
             return
         charmed_cloudflared.set(config, typed=True)
 
