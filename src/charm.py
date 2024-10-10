@@ -58,6 +58,7 @@ class CloudflaredCharm(ops.CharmBase):
 
     def _on_install(self, _: ops.EventBase) -> None:
         """Install the charmed-cloudflared snap."""
+        # https://snapcraft.io/docs/parallel-installs
         # pylint: disable=protected-access
         snap._system_set("experimental.parallel-instances", "true")
 
@@ -70,77 +71,35 @@ class CloudflaredCharm(ops.CharmBase):
             logger.exception("charm received invalid configuration")
             self.unit.status = ops.BlockedStatus(str(exc))
             return
-
-        required_snap_instances = set(metrics_ports.keys())
-        for remove_instance in self._installed_cloudflared_snaps() - required_snap_instances:
-            self._remove_cloudflared_snap(remove_instance)
-        for install_instance in metrics_ports.keys() - required_snap_instances:
-            self._install_cloudflared_snap(install_instance)
-
-        for instance, tunnel_token in tunnel_tokens.items():
-            self._config_cloudflared_snap(
-                name=instance,
-                config={
-                    "tunnel-token": tunnel_token,
-                    "metrics-port": metrics_ports[instance],
-                },
-            )
-        self.unit.status = ops.ActiveStatus()
-
-    @staticmethod
-    def _install_cloudflared_snap(name: str) -> None:  # pragma: nocover
-        """Install the charmed-cloudflared snap.
-
-        Args:
-            name: snap instance name (e.g. charmed-cloudflared_rel1 or charmed-cloudflared_config0)
-        """
-        subprocess.check_call(  # nosec
-            [
-                "snap",
-                "install",
-                "--name",
-                name,
-                "--dangerous",
-                "./src/charmed-cloudflared_2024.9.1_amd64.snap.zip",
-            ]
-        )
-
-    @staticmethod
-    def _config_cloudflared_snap(
-        name: str, config: dict[str, str | int]
-    ) -> None:  # pragma: nocover
-        """Configure charmed-cloudflared snap.
-
-        Args:
-            name: snap instance name (e.g. charmed-cloudflared_rel1 or charmed-cloudflared_config0)
-            config: charmed-cloudflared configuration.
-        """
-        charmed_cloudflared = snap.SnapCache()[name]
-        if all(charmed_cloudflared.get(key) == str(value) for key, value in config.items()):
-            return
-        charmed_cloudflared.set(config, typed=True)
-
-    @staticmethod
-    def _remove_cloudflared_snap(name: str) -> None:  # pragma: nocover
-        """Remove charmed-cloudflared snap.
-
-        Args:
-            name: snap instance name (e.g. charmed-cloudflared_rel1 or charmed-cloudflared_config0)
-        """
-        snap.remove(name)
-
-    def _installed_cloudflared_snaps(self) -> set[str]:  # pragma: nocover
-        """Get installed charmed-cloudflared snap instances.
-
-        Returns:
-            A set of installed charmed-cloudflared snap instances.
-        """
         installed_charmed_cloudflared = set()
         installed_snaps = self._snap_client.get_installed_snaps()
         for installed_snap in installed_snaps:
             if installed_snap["name"].startswith(CHARMED_CLOUDFLARED_SNAP_NAME):
                 installed_charmed_cloudflared.add(installed_snap["name"])
-        return installed_charmed_cloudflared
+        required_snap_instances = set(metrics_ports.keys())
+        for remove_instance in installed_charmed_cloudflared - required_snap_instances:
+            snap.remove(remove_instance)
+        for install_instance in required_snap_instances - installed_charmed_cloudflared:
+            subprocess.check_call(  # nosec
+                [
+                    "snap",
+                    "install",
+                    "--name",
+                    install_instance,
+                    "--dangerous",
+                    "./src/charmed-cloudflared_2024.9.1_amd64.snap.zip",
+                ]
+            )
+        for instance, tunnel_token in tunnel_tokens.items():
+            charmed_cloudflared = snap.SnapCache()[instance]
+            config = {
+                "tunnel-token": tunnel_token,
+                "metrics-port": metrics_ports[instance],
+            }
+            if all(charmed_cloudflared.get(key) == str(value) for key, value in config.items()):
+                return
+            charmed_cloudflared.set(config, typed=True)
+        self.unit.status = ops.ActiveStatus()
 
     def _get_instance_tunnel_tokens(self) -> dict[str, str]:
         """Get tunnel tokens for all charmed-cloudflared snap instances.
