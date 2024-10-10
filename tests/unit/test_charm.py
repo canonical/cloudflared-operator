@@ -40,7 +40,9 @@ def test_config_tunnel_token(snaps, cloudflared_charm_cls):
         ops.testing.State(secrets=[secret], config={"tunnel-token": secret.id}),
     )
 
-    assert snaps == {"charmed-cloudflared_config0": {"token": "foobar", "metrics-port": 15299}}
+    assert snaps == {
+        "charmed-cloudflared_config0": {"tunnel-token": "foobar", "metrics-port": 15299}
+    }
 
 
 def test_cloudflared_route_integration(snaps, cloudflared_charm_cls):
@@ -70,11 +72,11 @@ def test_cloudflared_route_integration(snaps, cloudflared_charm_cls):
 
     assert snaps == {
         f"charmed-cloudflared_relation{relation_1.id}": {
-            "token": "foo",
+            "tunnel-token": "foo",
             "metrics-port": 15300 + relation_1.id,
         },
         f"charmed-cloudflared_relation{relation_2.id}": {
-            "token": "bar",
+            "tunnel-token": "bar",
             "metrics-port": 15300 + relation_2.id,
         },
     }

@@ -75,7 +75,7 @@ class CloudflaredCharm(ops.CharmBase):
             self._config_cloudflared_snap(
                 name=instance,
                 config={
-                    "token": tunnel_tokens[instance],
+                    "tunnel-token": tunnel_tokens[instance],
                     "metrics-port": metrics_port,
                 },
             )
