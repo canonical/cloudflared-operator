@@ -71,12 +71,12 @@ class CloudflaredCharm(ops.CharmBase):
         for install_instance in metrics_ports.keys() - self._installed_cloudflared_snaps():
             self._install_cloudflared_snap(install_instance)
 
-        for instance, metrics_port in metrics_ports.items():
+        for instance, tunnel_token in tunnel_tokens.items():
             self._config_cloudflared_snap(
                 name=instance,
                 config={
-                    "tunnel-token": tunnel_tokens[instance],
-                    "metrics-port": metrics_port,
+                    "tunnel-token": tunnel_token,
+                    "metrics-port": metrics_ports[instance],
                 },
             )
         self.unit.status = ops.ActiveStatus()

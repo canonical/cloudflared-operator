@@ -43,10 +43,6 @@ async def test_tunnel_token_config(ops_test, model, cloudflare_api, cloudflared_
         "chrony", channel="latest/edge", config={"sources": "ntp://ntp.ubuntu.com"}
     )
     await model.integrate(base_charm.name, cloudflared_charm.name)
-    await model.wait_for_idle()
-    # required for deploying in LXD containers
-    await ops_test.juju("exec", "--application", base_charm.name, "--", "sudo", "reboot")
-    await model.wait_for_idle()
     tunnel_token = cloudflare_api.create_tunnel_token()
     _, secret_id, _ = await ops_test.juju(
         "add-secret", "test-tunnel-token", f"tunnel-token={tunnel_token}"
@@ -55,10 +51,14 @@ async def test_tunnel_token_config(ops_test, model, cloudflare_api, cloudflared_
     await model.grant_secret("test-tunnel-token", cloudflared_charm.name)
     await cloudflared_charm.set_config({"tunnel-token": secret_id})
     await model.wait_for_idle()
+    # required for deploying in LXD containers
+    await ops_test.juju("exec", "--application", base_charm.name, "--", "sudo", "reboot")
+    await model.wait_for_idle()
     wait_for_tunnel_healthy(cloudflare_api, tunnel_token)
 
 
 async def test_cloudflared_route_integration(
+    ops_test,
     model,
     cloudflare_api,
     cloudflared_charm,
@@ -88,6 +88,9 @@ async def test_cloudflared_route_integration(
         "rpc", method="set_tunnel_token", args=json.dumps([tunnel_token_2])
     )
     await action.wait()
+    await model.wait_for_idle()
+    # required for deploying in LXD containers
+    await ops_test.juju("exec", "--application", base_charm.name, "--", "sudo", "reboot")
     await model.wait_for_idle()
     wait_for_tunnel_healthy(cloudflare_api, tunnel_token_1)
     wait_for_tunnel_healthy(cloudflare_api, tunnel_token_2)

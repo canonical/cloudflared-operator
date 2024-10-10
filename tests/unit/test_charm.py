@@ -4,6 +4,7 @@
 # pylint: disable=protected-access
 
 """Unit tests."""
+
 from unittest import mock
 
 import ops
