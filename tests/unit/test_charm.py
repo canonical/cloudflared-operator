@@ -1,7 +1,7 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,too-many-arguments,too-many-positional-arguments
 
 """Unit tests."""
 
