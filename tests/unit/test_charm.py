@@ -4,25 +4,29 @@
 # pylint: disable=protected-access
 
 """Unit tests."""
+from unittest import mock
 
 import ops
 import ops.testing
 
+import src.charm
 
-def test_install(cloudflared_charm_cls):
+
+def test_install(cloudflared_charm_cls, monkeypatch):
     """
     arrange: none.
     act: run install event.
     assert: charm should install the charmed-cloudflared snap.
     """
     context = ops.testing.Context(cloudflared_charm_cls)
-
+    magic_mock = mock.MagicMock()
+    monkeypatch.setattr(src.charm.snap, "_system_set", magic_mock)
     context.run(context.on.install(), ops.testing.State())
 
-    cloudflared_charm_cls._install_cloudflared_snap.assert_called_once()
+    magic_mock.assert_called_once_with("experimental.parallel-instances", "true")
 
 
-def test_config_tunnel_token(cloudflared_charm_cls):
+def test_config_tunnel_token(snaps, cloudflared_charm_cls):
     """
     arrange: create a scenario with tunnel-token charm config.
     act: run the config-changed event.
@@ -36,10 +40,10 @@ def test_config_tunnel_token(cloudflared_charm_cls):
         ops.testing.State(secrets=[secret], config={"tunnel-token": secret.id}),
     )
 
-    cloudflared_charm_cls._config_cloudflared_snap.assert_called_once_with({"tokens": "foobar"})
+    assert snaps == {"charmed-cloudflared_config0": {"token": "foobar", "metrics-port": 15299}}
 
 
-def test_cloudflared_route_integration(cloudflared_charm_cls):
+def test_cloudflared_route_integration(snaps, cloudflared_charm_cls):
     """
     arrange: create a scenario with integrations with cloudflared-router providers.
     act: run the relation-changed event.
@@ -64,7 +68,16 @@ def test_cloudflared_route_integration(cloudflared_charm_cls):
         ops.testing.State(secrets=[secret_1, secret_2], relations=[relation_1, relation_2]),
     )
 
-    cloudflared_charm_cls._config_cloudflared_snap.assert_called_once_with({"tokens": "foo,bar"})
+    assert snaps == {
+        f"charmed-cloudflared_relation{relation_1.id}": {
+            "token": "foo",
+            "metrics-port": 15300 + relation_1.id,
+        },
+        f"charmed-cloudflared_relation{relation_2.id}": {
+            "token": "bar",
+            "metrics-port": 15300 + relation_2.id,
+        },
+    }
 
 
 def test_conflict_config_integration(cloudflared_charm_cls):
@@ -92,5 +105,5 @@ def test_conflict_config_integration(cloudflared_charm_cls):
     )
 
     assert out.unit_status == ops.BlockedStatus(
-        "tunnel-token is provided in both the config and integration"
+        "tunnel-token is provided by both the config and integration"
     )

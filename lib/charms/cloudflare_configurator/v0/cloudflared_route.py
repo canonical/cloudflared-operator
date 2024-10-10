@@ -105,34 +105,18 @@ class CloudflaredRouteRequirer:
         self._charm = charm
         self._relation_name = relation_name
 
-    def get_tunnel_tokens(
-        self, from_relation: ops.Relation | list[ops.Relation] | None = None
-    ) -> list[str]:
+    def get_tunnel_token(self, relation: ops.Relation) -> str | None:
         """Get cloudflared tunnel-token from cloudflared-route integrations.
 
         Args:
-            from_relation: relations to receive the tunnel-token from.
+            relation: relation to receive the tunnel-token from.
 
         Returns:
-            A list of cloudflared tunnel-tokens.
+            cloudflared tunnel-token.
         """
-        tunnel_tokens = []
-        if from_relation:
-            relations = (
-                [from_relation] if isinstance(from_relation, ops.Relation) else from_relation
-            )
-        else:
-            relations = self._charm.model.relations[self._relation_name]
-        relations.sort(key=lambda r: r.id)
-        for relation in relations:
-            if not relation.app:
-                continue
-            relation_data = relation.data[relation.app]
-            secret_id = relation_data.get(_TUNNEL_TOKEN_SECRET_ID_FIELD)
-            if not secret_id:
-                logger.debug("waiting for data in cloudflared_route relation id %s", relation.id)
-                continue
-            secret = self._charm.model.get_secret(id=secret_id)
-            tunnel_token = secret.get_content(refresh=True)[_TUNNEL_TOKEN_SECRET_VALUE_FIELD]
-            tunnel_tokens.append(tunnel_token)
-        return tunnel_tokens
+        relation_data = relation.data[relation.app]
+        secret_id = relation_data.get(_TUNNEL_TOKEN_SECRET_ID_FIELD)
+        if not secret_id:
+            return None
+        secret = self._charm.model.get_secret(id=secret_id)
+        return secret.get_content(refresh=True)[_TUNNEL_TOKEN_SECRET_VALUE_FIELD]

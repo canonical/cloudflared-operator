@@ -8,6 +8,7 @@
 """Cloudflared charm service."""
 
 import logging
+import subprocess
 import typing
 
 import ops
@@ -16,6 +17,13 @@ from charms.grafana_agent.v0.cos_agent import COSAgentProvider
 from charms.operator_libs_linux.v2 import snap
 
 logger = logging.getLogger(__name__)
+
+CLOUDFLARED_ROUTE_INTEGRATION_NAME = "cloudflared-route"
+TUNNEL_TOKEN_CONFIG_NAME = "tunnel-token"
+
+
+class InvalidConfig(ValueError):
+    """Charm received invalid configurations."""
 
 
 class CloudflaredCharm(ops.CharmBase):
@@ -32,84 +40,142 @@ class CloudflaredCharm(ops.CharmBase):
         self.framework.observe(self.on.config_changed, self._reconcile)
         self.framework.observe(self.on.secret_changed, self._reconcile)
         self.framework.observe(self.on["cloudflared-route"].relation_changed, self._reconcile)
+        self._snap_client = snap.SnapClient()
         self._cloudflared_route = CloudflaredRouteRequirer(self)
-        try:
-            tunnel_tokens = self._get_tunnel_tokens()
-        except ValueError:
-            tunnel_tokens = []
         self._grafana_agent = COSAgentProvider(
             self,
             metrics_endpoints=[
                 {"path": "/metrics", "port": metrics_port}
-                for metrics_port in range(15300, 15300 + len(tunnel_tokens))
+                for metrics_port in self._get_instance_metrics_ports().values()
             ],
             dashboard_dirs=["./src/grafana_dashboards"],
         )
 
     def _on_install(self, _: ops.EventBase) -> None:
         """Install the charmed-cloudflared snap."""
-        self._install_cloudflared_snap()
+        # pylint: disable=protected-access
+        snap._system_set("experimental.parallel-instances", "true")
 
     def _reconcile(self, _: ops.EventBase) -> None:
         """Handle changed configuration."""
         try:
-            tunnel_tokens = self._get_tunnel_tokens()
-        except ValueError:
-            self.unit.status = ops.BlockedStatus(
-                "tunnel-token is provided in both the config and integration"
-            )
+            metrics_ports = self._get_instance_metrics_ports()
+            tunnel_tokens = self._get_instance_tunnel_tokens()
+        except InvalidConfig as exc:
+            logger.exception("charm received invalid configuration")
+            self.unit.status = ops.BlockedStatus(str(exc))
             return
-        self._config_cloudflared_snap({"tokens": ",".join(tunnel_tokens)})
+        for remove_instance in self._installed_cloudflared_snaps() - metrics_ports.keys():
+            self._remove_cloudflared_snap(remove_instance)
+        for install_instance in metrics_ports.keys() - self._installed_cloudflared_snaps():
+            self._install_cloudflared_snap(install_instance)
+
+        for instance, metrics_port in metrics_ports.items():
+            self._config_cloudflared_snap(
+                name=instance,
+                config={
+                    "token": tunnel_tokens[instance],
+                    "metrics-port": metrics_port,
+                },
+            )
         self.unit.status = ops.ActiveStatus()
 
-    def _install_cloudflared_snap(self) -> None:  # pragma: nocover
-        """Install the charmed-cloudflared snap."""
-        snap.install_local("./src/charmed-cloudflared_2024.9.1_amd64.snap.zip", dangerous=True)
+    @staticmethod
+    def _install_cloudflared_snap(name: str) -> None:  # pragma: nocover
+        """Install the charmed-cloudflared snap.
 
-    def _config_cloudflared_snap(self, config: dict[str, str]) -> None:  # pragma: nocover
+        Args:
+            name: snap instance name (charmed-cloudflared_relation1 or charmed-cloudflared_config0)
+        """
+        subprocess.check_call(
+            [
+                "snap",
+                "install",
+                "--name",
+                name,
+                "--dangerous",
+                "./src/charmed-cloudflared_2024.9.1_amd64.snap.zip",
+            ]
+        )
+
+    @staticmethod
+    def _config_cloudflared_snap(
+        name: str, config: dict[str, str | int]
+    ) -> None:  # pragma: nocover
         """Configure charmed-cloudflared snap.
 
         Args:
+            name: snap instance name (charmed-cloudflared_relation1 or charmed-cloudflared_config0)
             config: charmed-cloudflared configuration.
         """
-        charmed_cloudflared = snap.SnapCache()["charmed-cloudflared"]
-        charmed_cloudflared.set(config)
+        charmed_cloudflared = snap.SnapCache()[name]
+        if all(charmed_cloudflared.get(key, typed=True) == value for key, value in config.items()):
+            return
+        charmed_cloudflared.set(config, typed=True)
 
-    def _get_tunnel_tokens(self) -> list[str]:
-        """Receive tunnel tokens from all configuration sources.
+    @staticmethod
+    def _remove_cloudflared_snap(name: str) -> None:  # pragma: nocover
+        """Remove charmed-cloudflared snap.
+
+        Args:
+            name: snap instance name (charmed-cloudflared_relation1 or charmed-cloudflared_config0)
+        """
+        snap.remove(name)
+
+    def _installed_cloudflared_snaps(self) -> set[str]:  # pragma: nocover
+        """Get installed charmed-cloudflared snap instances.
 
         Returns:
-            Cloudflared tunnel tokens.
+            A set of installed charmed-cloudflared snap instances.
+        """
+        installed_charmed_cloudflared = set()
+        installed_snaps = self._snap_client.get_installed_snaps()
+        for installed_snap in installed_snaps:
+            if installed_snap["name"].startswith("charmed-cloudflared"):
+                installed_charmed_cloudflared.add(installed_snap["name"])
+        return installed_charmed_cloudflared
+
+    def _get_instance_tunnel_tokens(self) -> dict[str, str]:
+        """Get tunnel tokens for all charmed-cloudflared snap instances.
+
+        Returns:
+            A mapping of charmed-cloudflared snap instance name to tunnel tokens.
 
         Raises:
-            ValueError: If there's a conflict between different configuration sources.
+            InvalidConfig: If the tunnel-token charm configuration is invalid.
         """
-        config_tunnel_tokens = self._get_tunnel_tokens_from_config()
-        integration_tunnel_tokens = self._get_tunnel_token_from_integration()
-        if config_tunnel_tokens and integration_tunnel_tokens:
-            raise ValueError("received tunnel-tokens from config and integration")
-        return config_tunnel_tokens or integration_tunnel_tokens
+        tunnel_tokens = {}
+        tunnel_token_config = typing.cast(str | None, self.config.get(TUNNEL_TOKEN_CONFIG_NAME))
+        if tunnel_token_config:
+            try:
+                secret = self.model.get_secret(id=tunnel_token_config)
+                secret_value = secret.get_content(refresh=True)["tunnel-token"]
+                tunnel_tokens["charmed-cloudflared_config0"] = secret_value
+            except (ops.SecretNotFoundError, ops.ModelError, KeyError) as exc:
+                raise InvalidConfig("invalid tunnel-token config") from exc
+        relations = self.model.relations[CLOUDFLARED_ROUTE_INTEGRATION_NAME]
+        if tunnel_tokens and relations:
+            raise InvalidConfig("tunnel-token is provided by both the config and integration")
+        for relation in relations:
+            tunnel_token = self._cloudflared_route.get_tunnel_token(relation)
+            if tunnel_token:
+                tunnel_tokens[f"charmed-cloudflared_relation{relation.id}"] = tunnel_token
+        return tunnel_tokens
 
-    def _get_tunnel_tokens_from_config(self) -> list[str]:
-        """Receive tunnel tokens from charm configuration.
+    def _get_instance_metrics_ports(self) -> dict[str, int]:
+        """Get metric ports for all charmed-cloudflared snap instances.
 
         Returns:
-            Cloudflared tunnel tokens.
+            A mapping of charmed-cloudflared snap instance name to metrics ports.
         """
-        tokens = []
-        secret_id = typing.cast(str, self.config.get("tunnel-token"))
-        if secret_id:
-            secret = self.model.get_secret(id=secret_id)
-            tokens.append(secret.get_content(refresh=True)["tunnel-token"])
-        return tokens
-
-    def _get_tunnel_token_from_integration(self) -> list[str]:
-        """Receive tunnel tokens from charm integrations.
-
-        Returns:
-            Cloudflared tunnel tokens.
-        """
-        return self._cloudflared_route.get_tunnel_tokens()
+        metrics_ports = {}
+        if self.config.get(TUNNEL_TOKEN_CONFIG_NAME):
+            metrics_ports["charmed-cloudflared_config0"] = 15299
+        for relation in self.model.relations[CLOUDFLARED_ROUTE_INTEGRATION_NAME]:
+            if relation.app is None:
+                continue
+            metrics_ports[f"charmed-cloudflared_relation{relation.id}"] = 15300 + relation.id
+        return metrics_ports
 
 
 if __name__ == "__main__":  # pragma: nocover
