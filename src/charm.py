@@ -8,7 +8,7 @@
 """Cloudflared charm service."""
 
 import logging
-import subprocess
+import subprocess  # nosec
 import typing
 
 import ops
@@ -19,7 +19,8 @@ from charms.operator_libs_linux.v2 import snap
 logger = logging.getLogger(__name__)
 
 CLOUDFLARED_ROUTE_INTEGRATION_NAME = "cloudflared-route"
-TUNNEL_TOKEN_CONFIG_NAME = "tunnel-token"
+# this is not a hardcoded password
+TUNNEL_TOKEN_CONFIG_NAME = "tunnel-token"  # nosec
 
 
 class InvalidConfig(ValueError):
@@ -87,7 +88,7 @@ class CloudflaredCharm(ops.CharmBase):
         Args:
             name: snap instance name (charmed-cloudflared_relation1 or charmed-cloudflared_config0)
         """
-        subprocess.check_call(
+        subprocess.check_call(  # nosec
             [
                 "snap",
                 "install",

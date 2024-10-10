@@ -43,6 +43,10 @@ async def test_tunnel_token_config(ops_test, model, cloudflare_api, cloudflared_
         "chrony", channel="latest/edge", config={"sources": "ntp://ntp.ubuntu.com"}
     )
     await model.integrate(base_charm.name, cloudflared_charm.name)
+    await model.wait_for_idle()
+    # required for deploying in LXD containers
+    await ops_test.juju("exec", "--application", base_charm.name, "--", "sudo", "reboot")
+    await model.wait_for_idle()
     tunnel_token = cloudflare_api.create_tunnel_token()
     _, secret_id, _ = await ops_test.juju(
         "add-secret", "test-tunnel-token", f"tunnel-token={tunnel_token}"
