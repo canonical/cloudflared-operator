@@ -114,18 +114,18 @@ class CloudflaredCharm(ops.CharmBase):
             InvalidConfig: If the tunnel-token charm configuration is invalid.
             RuntimeError: If the relation ID exceeds maximum allowed value.
         """
-        tunnel_tokens = {}
         tunnel_token_config = typing.cast(str | None, self.config.get(TUNNEL_TOKEN_CONFIG_NAME))
+        relations = self.model.relations[CLOUDFLARED_ROUTE_INTEGRATION_NAME]
+        if tunnel_token_config and relations:
+            raise InvalidConfig("tunnel-token is provided by both the config and integration")
         if tunnel_token_config:
             try:
                 secret = self.model.get_secret(id=tunnel_token_config)
                 secret_value = secret.get_content(refresh=True)["tunnel-token"]
-                tunnel_tokens[f"{CHARMED_CLOUDFLARED_SNAP_NAME}_config0"] = secret_value
+                return {f"{CHARMED_CLOUDFLARED_SNAP_NAME}_config0": secret_value}
             except (ops.SecretNotFoundError, ops.ModelError, KeyError) as exc:
                 raise InvalidConfig("invalid tunnel-token config") from exc
-        relations = self.model.relations[CLOUDFLARED_ROUTE_INTEGRATION_NAME]
-        if tunnel_tokens and relations:
-            raise InvalidConfig("tunnel-token is provided by both the config and integration")
+        tunnel_tokens = {}
         for relation in relations:
             try:
                 tunnel_token = self._cloudflared_route.get_tunnel_token(relation)
