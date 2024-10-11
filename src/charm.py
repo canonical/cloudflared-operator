@@ -78,8 +78,10 @@ class CloudflaredCharm(ops.CharmBase):
                 installed_charmed_cloudflared.add(installed_snap["name"])
         required_snap_instances = set(metrics_ports.keys())
         for remove_instance in installed_charmed_cloudflared - required_snap_instances:
+            logger.info("removing charmed-cloudflared instance: %s", remove_instance)
             snap.remove(remove_instance)
         for install_instance in required_snap_instances - installed_charmed_cloudflared:
+            logger.info("installing charmed-cloudflared instance: %s", install_instance)
             subprocess.check_call(  # nosec
                 [
                     "snap",
@@ -97,7 +99,8 @@ class CloudflaredCharm(ops.CharmBase):
                 "metrics-port": metrics_ports[instance],
             }
             if all(charmed_cloudflared.get(key) == str(value) for key, value in config.items()):
-                return
+                continue
+            logger.info("configuring charmed-cloudflared instance: %s", instance)
             charmed_cloudflared.set(config, typed=True)
         self.unit.status = ops.ActiveStatus()
 
