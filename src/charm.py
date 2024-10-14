@@ -8,7 +8,7 @@
 """Cloudflared charm service."""
 
 import logging
-import subprocess
+import subprocess  # nosec
 import typing
 
 import ops
