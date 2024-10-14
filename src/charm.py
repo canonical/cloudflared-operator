@@ -8,6 +8,7 @@
 """Cloudflared charm service."""
 
 import logging
+import subprocess
 import typing
 
 import ops
@@ -81,7 +82,15 @@ class CloudflaredCharm(ops.CharmBase):
             snap.remove(remove_instance)
         for install_instance in required_snap_instances - installed_charmed_cloudflared:
             logger.info("installing charmed-cloudflared instance: %s", install_instance)
-            snap.add([install_instance])
+            # snap charm library doesn't support parallel instances
+            subprocess.check_call(  # nosec
+                [
+                    "snap",
+                    "install",
+                    CHARMED_CLOUDFLARED_SNAP_NAME,
+                    install_instance,
+                ]
+            )
         for instance, tunnel_token in tunnel_tokens.items():
             charmed_cloudflared = snap.SnapCache()[instance]
             config = {
