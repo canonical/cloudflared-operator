@@ -5,28 +5,34 @@
 
 # Learn more at: https://juju.is/docs/sdk
 
-"""Charm the service.
-
-Refer to the following post for a quick-start guide that will help you
-develop a new k8s charm using the Operator Framework:
-
-https://discourse.charmhub.io/t/4208
-"""
+"""Cloudflared charm service."""
 
 import logging
+import subprocess  # nosec
 import typing
 
 import ops
-from ops import pebble
+from charms.cloudflare_configurator.v0.cloudflared_route import (
+    CloudflaredRouteRequirer,
+    InvalidIntegration,
+)
+from charms.grafana_agent.v0.cos_agent import COSAgentProvider
+from charms.operator_libs_linux.v2 import snap
 
-# Log messages can be retrieved using juju debug-log
 logger = logging.getLogger(__name__)
 
-VALID_LOG_LEVELS = ["info", "debug", "warning", "error", "critical"]
+CLOUDFLARED_ROUTE_INTEGRATION_NAME = "cloudflared-route"
+# this is not a hardcoded password
+TUNNEL_TOKEN_CONFIG_NAME = "tunnel-token"  # nosec
+CHARMED_CLOUDFLARED_SNAP_NAME = "charmed-cloudflared"
 
 
-class IsCharmsTemplateCharm(ops.CharmBase):
-    """Charm the service."""
+class InvalidConfig(ValueError):
+    """Charm received invalid configurations."""
+
+
+class CloudflaredCharm(ops.CharmBase):
+    """Cloudflared charm service."""
 
     def __init__(self, *args: typing.Any):
         """Construct.
@@ -35,83 +41,121 @@ class IsCharmsTemplateCharm(ops.CharmBase):
             args: Arguments passed to the CharmBase parent constructor.
         """
         super().__init__(*args)
-        self.framework.observe(self.on.httpbin_pebble_ready, self._on_httpbin_pebble_ready)
-        self.framework.observe(self.on.config_changed, self._on_config_changed)
+        self.framework.observe(self.on.install, self._on_install)
+        self.framework.observe(self.on.config_changed, self._reconcile)
+        self.framework.observe(self.on.secret_changed, self._reconcile)
+        self.framework.observe(self.on["cloudflared-route"].relation_changed, self._reconcile)
+        self._snap_client = snap.SnapClient()
+        self._cloudflared_route = CloudflaredRouteRequirer(self)
+        self._grafana_agent = COSAgentProvider(
+            self,
+            metrics_endpoints=[
+                {"path": "/metrics", "port": metrics_port}
+                for metrics_port in self._get_instance_metrics_ports().values()
+            ],
+            dashboard_dirs=["./src/grafana_dashboards"],
+        )
 
-    def _on_httpbin_pebble_ready(self, event: ops.PebbleReadyEvent) -> None:
-        """Define and start a workload using the Pebble API.
+    def _on_install(self, _: ops.EventBase) -> None:
+        """Install the charmed-cloudflared snap."""
+        # https://snapcraft.io/docs/parallel-installs
+        # pylint: disable=protected-access
+        snap._system_set("experimental.parallel-instances", "true")
 
-        Change this example to suit your needs. You'll need to specify the right entrypoint and
-        environment configuration for your specific workload.
-
-        Learn more about interacting with Pebble at at https://juju.is/docs/sdk/pebble.
-
-        Args:
-            event: event triggering the handler.
-        """
-        # Get a reference the container attribute on the PebbleReadyEvent
-        container = event.workload
-        # Add initial Pebble config layer using the Pebble API
-        container.add_layer("httpbin", self._pebble_layer, combine=True)
-        # Make Pebble reevaluate its plan, ensuring any services are started if enabled.
-        container.replan()
-        # Learn more about statuses in the SDK docs:
-        # https://juju.is/docs/sdk/constructs#heading--statuses
+    def _reconcile(self, _: ops.EventBase) -> None:
+        """Handle changed configuration."""
+        try:
+            metrics_ports = self._get_instance_metrics_ports()
+            tunnel_tokens = self._get_instance_tunnel_tokens()
+        except InvalidConfig as exc:
+            logger.exception("charm received invalid configuration")
+            self.unit.status = ops.BlockedStatus(str(exc))
+            return
+        installed_charmed_cloudflared = set()
+        installed_snaps = self._snap_client.get_installed_snaps()
+        for installed_snap in installed_snaps:
+            if installed_snap["name"].startswith(CHARMED_CLOUDFLARED_SNAP_NAME):
+                installed_charmed_cloudflared.add(installed_snap["name"])
+        required_snap_instances = set(metrics_ports.keys())
+        for remove_instance in installed_charmed_cloudflared - required_snap_instances:
+            logger.info("removing charmed-cloudflared instance: %s", remove_instance)
+            snap.remove(remove_instance)
+        for install_instance in required_snap_instances - installed_charmed_cloudflared:
+            logger.info("installing charmed-cloudflared instance: %s", install_instance)
+            # snap charm library doesn't support parallel instances
+            subprocess.check_call(  # nosec
+                [
+                    "snap",
+                    "install",
+                    CHARMED_CLOUDFLARED_SNAP_NAME,
+                    install_instance,
+                ]
+            )
+        for instance, tunnel_token in tunnel_tokens.items():
+            charmed_cloudflared = snap.SnapCache()[instance]
+            config = {
+                "tunnel-token": tunnel_token,
+                "metrics-port": metrics_ports[instance],
+            }
+            if all(charmed_cloudflared.get(key) == str(value) for key, value in config.items()):
+                continue
+            logger.info("configuring charmed-cloudflared instance: %s", instance)
+            charmed_cloudflared.set(config, typed=True)
         self.unit.status = ops.ActiveStatus()
 
-    def _on_config_changed(self, event: ops.ConfigChangedEvent) -> None:
-        """Handle changed configuration.
+    def _get_instance_tunnel_tokens(self) -> dict[str, str]:
+        """Get tunnel tokens for all charmed-cloudflared snap instances.
 
-        Change this example to suit your needs. If you don't need to handle config, you can remove
-        this method.
+        Returns:
+            A mapping of charmed-cloudflared snap instance name to tunnel tokens.
 
-        Learn more about config at https://juju.is/docs/sdk/config
-
-        Args:
-            event: event triggering the handler.
+        Raises:
+            InvalidConfig: If the tunnel-token charm configuration is invalid.
+            RuntimeError: If the relation ID exceeds maximum allowed value.
         """
-        # Fetch the new config value
-        log_level = str(self.model.config["log-level"]).lower()
+        tunnel_token_config = typing.cast(str | None, self.config.get(TUNNEL_TOKEN_CONFIG_NAME))
+        relations = self.model.relations[CLOUDFLARED_ROUTE_INTEGRATION_NAME]
+        if tunnel_token_config and relations:
+            raise InvalidConfig("tunnel-token is provided by both the config and integration")
+        if tunnel_token_config:
+            try:
+                secret = self.model.get_secret(id=tunnel_token_config)
+                secret_value = secret.get_content(refresh=True)["tunnel-token"]
+                return {f"{CHARMED_CLOUDFLARED_SNAP_NAME}_config0": secret_value}
+            except (ops.SecretNotFoundError, ops.ModelError, KeyError) as exc:
+                raise InvalidConfig("invalid tunnel-token config") from exc
+        tunnel_tokens = {}
+        for relation in relations:
+            try:
+                tunnel_token = self._cloudflared_route.get_tunnel_token(relation)
+            except InvalidIntegration as exc:
+                raise InvalidConfig(
+                    "received invalid data from "
+                    f"{CLOUDFLARED_ROUTE_INTEGRATION_NAME} integration: {exc}"
+                ) from exc
+            if relation.id > 999999:
+                raise RuntimeError("relation id exceeds maximum allowed value")
+            if tunnel_token:
+                tunnel_tokens[f"{CHARMED_CLOUDFLARED_SNAP_NAME}_rel{relation.id}"] = tunnel_token
+        return tunnel_tokens
 
-        # Do some validation of the configuration option
-        if log_level in VALID_LOG_LEVELS:
-            # The config is good, so update the configuration of the workload
-            container = self.unit.get_container("httpbin")
-            # Verify that we can connect to the Pebble API in the workload container
-            if container.can_connect():
-                # Push an updated layer with the new config
-                container.add_layer("httpbin", self._pebble_layer, combine=True)
-                container.replan()
+    def _get_instance_metrics_ports(self) -> dict[str, int]:
+        """Get metric ports for all charmed-cloudflared snap instances.
 
-                logger.debug("Log level for gunicorn changed to '%s'", log_level)
-                self.unit.status = ops.ActiveStatus()
-            else:
-                # We were unable to connect to the Pebble API, so we defer this event
-                event.defer()
-                self.unit.status = ops.WaitingStatus("waiting for Pebble API")
-        else:
-            # In this case, the config option is bad, so block the charm and notify the operator.
-            self.unit.status = ops.BlockedStatus("invalid log level: '{log_level}'")
-
-    @property
-    def _pebble_layer(self) -> pebble.LayerDict:
-        """Return a dictionary representing a Pebble layer."""
-        return {
-            "summary": "httpbin layer",
-            "description": "pebble config layer for httpbin",
-            "services": {
-                "httpbin": {
-                    "override": "replace",
-                    "summary": "httpbin",
-                    "command": "gunicorn -b 0.0.0.0:80 httpbin:app -k gevent",
-                    "startup": "enabled",
-                    "environment": {
-                        "GUNICORN_CMD_ARGS": f"--log-level {self.model.config['log-level']}"
-                    },
-                }
-            },
-        }
+        Returns:
+            A mapping of charmed-cloudflared snap instance name to metrics ports.
+        """
+        metrics_ports = {}
+        if self.config.get(TUNNEL_TOKEN_CONFIG_NAME):
+            metrics_ports[f"{CHARMED_CLOUDFLARED_SNAP_NAME}_config0"] = 15299
+        for relation in self.model.relations[CLOUDFLARED_ROUTE_INTEGRATION_NAME]:
+            if relation.app is None:
+                continue
+            metrics_ports[f"{CHARMED_CLOUDFLARED_SNAP_NAME}_rel{relation.id}"] = (
+                15300 + relation.id
+            )
+        return metrics_ports
 
 
 if __name__ == "__main__":  # pragma: nocover
-    ops.main.main(IsCharmsTemplateCharm)
+    ops.main(CloudflaredCharm)

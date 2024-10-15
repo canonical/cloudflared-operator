@@ -11,3 +11,5 @@ def pytest_addoption(parser):
         parser: Pytest parser.
     """
     parser.addoption("--charm-file", action="store")
+    parser.addoption("--account-id", action="store")
+    parser.addoption("--api-token", action="store")
