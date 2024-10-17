@@ -95,6 +95,7 @@ class CloudflaredCharm(ops.CharmBase):
                     "./src/charmed-cloudflared_2024.9.1_amd64.snap.zip",
                     "--name",
                     install_instance,
+                    "--dangerous"
                 ]
             )
         for instance, tunnel_spec in tunnel_specs.items():
