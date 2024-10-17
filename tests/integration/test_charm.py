@@ -114,12 +114,6 @@ async def test_nameserver(
     assume: cloudflared tunnels should use the given nameserver.
     """
     await cloudflared_charm.set_config({"tunnel-token": ""})
-    await model.integrate(
-        f"{cloudflared_charm.name}:cloudflared-route", cloudflared_route_provider_1.name
-    )
-    await model.integrate(
-        f"{cloudflared_charm.name}:cloudflared-route", cloudflared_route_provider_2.name
-    )
     await model.wait_for_idle()
     tunnel_token = cloudflare_api.create_tunnel_token()
     logger.info("use dnsmasq nameserver: %s", dnsmasq_ip)

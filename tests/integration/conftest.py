@@ -173,10 +173,10 @@ SRC_OVERWRITE = json.dumps(
 
                 def set_tunnel_token(self, tunnel_token):
                     return self.cloudflared_route.set_tunnel_token(tunnel_token)
-                
+
                 def unset_tunnel_token(self):
                     self.cloudflared_route.unset_tunnel_token()
-                    
+
                 def set_nameserver(self, nameserver):
                     return self.cloudflared_route.set_nameserver(nameserver)
             """
