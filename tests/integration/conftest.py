@@ -147,8 +147,10 @@ def model_fixture(ops_test) -> juju.model.Model:
     return ops_test.model
 
 
-@pytest_asyncio.fixture(scope="module")
-async def cloudflared_charm(model, pytestconfig: pytest.Config) -> juju.application.Application:
+@pytest_asyncio.fixture(name="cloudflared_charm", scope="module")
+async def cloudflared_charm_fixture(
+    model, pytestconfig: pytest.Config
+) -> juju.application.Application:
     """Deploy the cloudflared charm."""
     charm = pytestconfig.getoption("--charm-file")
     return await model.deploy(f"./{charm}", num_units=0)
@@ -206,7 +208,9 @@ async def cloudflared_route_provider_1_fixture(
 
 
 @pytest_asyncio.fixture(name="cloudflared_route_provider_2", scope="module")
-async def cloudflared_route_provider_2_fixture(model) -> juju.application.Application:
+async def cloudflared_route_provider_2_fixture(
+    model, cloudflared_charm
+) -> juju.application.Application:
     """Deploy a cloudflared-route requirer using any-charm."""
     charm = await model.deploy(
         "any-charm",
