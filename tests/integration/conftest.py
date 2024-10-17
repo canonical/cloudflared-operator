@@ -268,8 +268,8 @@ async def dnsmasq_fixture(ops_test, model) -> juju.application.Application:
 
 @pytest_asyncio.fixture(scope="module")
 async def dnsmasq_ip(ops_test, dnsmasq) -> str:
+    """Get the IP address of dnsmasq."""
     _, status, _ = await ops_test.juju("status", "--format", "json")
     status = json.loads(status)
     units = status["applications"][dnsmasq.name]["units"]
-    for unit in units.values():
-        return unit["public-address"]
+    return list(units.values())[0]["public-address"]
