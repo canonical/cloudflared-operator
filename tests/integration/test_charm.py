@@ -73,12 +73,6 @@ async def test_cloudflared_route_integration(
     assume: cloudflared tunnels provided in the integration is up and healthy.
     """
     await cloudflared_charm.set_config({"tunnel-token": ""})
-    await model.integrate(
-        f"{cloudflared_charm.name}:cloudflared-route", cloudflared_route_provider_1.name
-    )
-    await model.integrate(
-        f"{cloudflared_charm.name}:cloudflared-route", cloudflared_route_provider_2.name
-    )
     await model.wait_for_idle()
     tunnel_token_1 = cloudflare_api.create_tunnel_token()
     tunnel_token_2 = cloudflare_api.create_tunnel_token()

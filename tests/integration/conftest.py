@@ -189,9 +189,9 @@ SRC_OVERWRITE = json.dumps(
 
 
 @pytest_asyncio.fixture(scope="module")
-async def cloudflared_route_provider_1(model) -> juju.application.Application:
+async def cloudflared_route_provider_1(model, cloudflared_charm) -> juju.application.Application:
     """Deploy a cloudflared-route requirer using any-charm."""
-    return await model.deploy(
+    charm = await model.deploy(
         "any-charm",
         "cloudflared-route-provider-one",
         config={
@@ -199,12 +199,14 @@ async def cloudflared_route_provider_1(model) -> juju.application.Application:
         },
         channel="latest/edge",
     )
+    await model.integrate(f"{cloudflared_charm.name}:cloudflared-route", charm.name)
+    return charm
 
 
 @pytest_asyncio.fixture(scope="module")
 async def cloudflared_route_provider_2(model) -> juju.application.Application:
     """Deploy a cloudflared-route requirer using any-charm."""
-    return await model.deploy(
+    charm = await model.deploy(
         "any-charm",
         "cloudflared-route-provider-two",
         config={
@@ -212,6 +214,8 @@ async def cloudflared_route_provider_2(model) -> juju.application.Application:
         },
         channel="latest/edge",
     )
+    await model.integrate(f"{cloudflared_charm.name}:cloudflared-route", charm.name)
+    return charm
 
 
 @pytest_asyncio.fixture(name="dnsmasq", scope="module")
