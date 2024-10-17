@@ -267,6 +267,15 @@ async def dnsmasq_fixture(ops_test, model) -> juju.application.Application:
         "-c",
         "echo log-facility=/var/log/dnsmasq.log >> /etc/dnsmasq.conf",
     )
+    await ops_test.juju(
+        "exec",
+        "--application",
+        dnsmasq.name,
+        "--",
+        "systemctl",
+        "restart",
+        "dnsmasq",
+    )
     return dnsmasq
 
 
