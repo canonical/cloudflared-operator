@@ -96,6 +96,22 @@ class CloudflaredRouteProvider(ops.Object):
             self._charm.model.get_secret(id=secret_id).remove_all_revisions()
         data[_TUNNEL_TOKEN_SECRET_VALUE_FIELD] = ""
 
+    def set_nameserver(self, nameserver: str | None, relation: ops.Relation | None = None) -> None:
+        """Set or unset the nameserver used by the Cloudflared tunnel.
+
+        Args:
+            nameserver: The nameserver used by the Cloudflared tunnel.
+            relation: The relation to remote the tunnel-token from, if the relation is None, using
+                the only existing cloudflared-route relation.
+        """
+        if not relation:
+            relation = self._charm.model.get_relation(relation_name=self._relation_name)
+        data = relation.data[self._charm.app]
+        if nameserver:
+            data["nameserver"] = nameserver
+        else:
+            del data["nameserver"]
+
     def _on_relation_broken(self, event: ops.RelationBrokenEvent):
         self.unset_tunnel_token(event.relation)
 
@@ -132,3 +148,14 @@ class CloudflaredRouteRequirer:
             raise InvalidIntegration(
                 f"secret doesn't have '{_TUNNEL_TOKEN_SECRET_VALUE_FIELD}' field"
             ) from exc
+
+    def get_nameserver(self, relation: ops.Relation) -> str | None:
+        """the nameserver used by the Cloudflared tunnel.
+
+        Args:
+            relation: relation to receive the tunnel-token from.
+
+        Returns:
+            the nameserver used by the Cloudflared tunnel.
+        """
+        return relation.data[relation.app].get("nameserver")

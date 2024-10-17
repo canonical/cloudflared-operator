@@ -173,9 +173,12 @@ SRC_OVERWRITE = json.dumps(
 
                 def set_tunnel_token(self, tunnel_token):
                     return self.cloudflared_route.set_tunnel_token(tunnel_token)
-
+                
                 def unset_tunnel_token(self):
                     self.cloudflared_route.unset_tunnel_token()
+                    
+                def set_nameserver(self, nameserver):
+                    return self.cloudflared_route.set_nameserver(nameserver)
             """
         ),
         "cloudflared_route.py": (
@@ -209,3 +212,64 @@ async def cloudflared_route_provider_2(model) -> juju.application.Application:
         },
         channel="latest/edge",
     )
+
+
+@pytest_asyncio.fixture(name="dnsmasq", scope="module")
+async def dnsmasq_fixture(ops_test, model) -> juju.application.Application:
+    """Deploy a dnsmasq server."""
+    dnsmasq = await model.deploy(
+        "ubuntu",
+        "dnsmasq",
+        channel="latest/edge",
+    )
+    await model.wait_for_idle()
+    await ops_test.juju("exec", "--application", dnsmasq.name, "--", "apt", "update")
+    await ops_test.juju(
+        "exec", "--application", dnsmasq.name, "--", "apt", "install", "dnsmasq", "-y"
+    )
+    await ops_test.juju(
+        "exec",
+        "--application",
+        dnsmasq.name,
+        "--",
+        "bash",
+        "-c",
+        "echo server=1.1.1.1 >> /etc/dnsmasq.conf",
+    )
+    await ops_test.juju(
+        "exec",
+        "--application",
+        dnsmasq.name,
+        "--",
+        "bash",
+        "-c",
+        "echo bind-interfaces >> /etc/dnsmasq.conf",
+    )
+    await ops_test.juju(
+        "exec",
+        "--application",
+        dnsmasq.name,
+        "--",
+        "bash",
+        "-c",
+        "echo log-queries >> /etc/dnsmasq.conf",
+    )
+    await ops_test.juju(
+        "exec",
+        "--application",
+        dnsmasq.name,
+        "--",
+        "bash",
+        "-c",
+        "echo log-facility=/var/log/dnsmasq.log >> /etc/dnsmasq.conf",
+    )
+    return dnsmasq
+
+
+@pytest_asyncio.fixture(scope="module")
+async def dnsmasq_ip(ops_test, dnsmasq) -> str:
+    _, status, _ = await ops_test.juju("status", "--format", "json")
+    status = json.loads(status)
+    units = status["applications"][dnsmasq.name]["units"]
+    for unit in units.values():
+        return unit["address"]

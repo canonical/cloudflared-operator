@@ -96,3 +96,49 @@ async def test_cloudflared_route_integration(
     await model.wait_for_idle()
     wait_for_tunnel_healthy(cloudflare_api, tunnel_token_1)
     wait_for_tunnel_healthy(cloudflare_api, tunnel_token_2)
+
+
+async def test_nameserver(
+    ops_test,
+    model,
+    cloudflare_api,
+    cloudflared_charm,
+    cloudflared_route_provider_1,
+    dnsmasq,
+    dnsmasq_ip,
+):
+    """
+    arrange: deploy the cloudflared charm and cloudflared-route provider charms.
+    act: provide cloudflared tunnel token with a specific nameserver setting for cloudflared
+        using cloudflared-route provider charms.
+    assume: cloudflared tunnels should use the given nameserver.
+    """
+    await cloudflared_charm.set_config({"tunnel-token": ""})
+    await model.integrate(
+        f"{cloudflared_charm.name}:cloudflared-route", cloudflared_route_provider_1.name
+    )
+    await model.integrate(
+        f"{cloudflared_charm.name}:cloudflared-route", cloudflared_route_provider_2.name
+    )
+    await model.wait_for_idle()
+    tunnel_token = cloudflare_api.create_tunnel_token()
+    logger.info("use dnsmasq nameserver: %s", dnsmasq_ip)
+    action = await cloudflared_route_provider_1.units[0].run_action(
+        "rpc", method="set_nameserver", args=json.dumps([dnsmasq_ip])
+    )
+    await action.wait()
+    action = await cloudflared_route_provider_1.units[0].run_action(
+        "rpc", method="set_tunnel_token", args=json.dumps([tunnel_token])
+    )
+    await action.wait()
+    await model.wait_for_idle()
+    # required for deploying in LXD containers
+    await ops_test.juju("exec", "--application", cloudflared_charm.name, "--", "sudo", "reboot")
+    await model.wait_for_idle()
+    wait_for_tunnel_healthy(cloudflare_api, tunnel_token)
+
+    _, dnsmasq_logs, _ = await ops_test.juju(
+        "exec", "--unit", f"{dnsmasq.name}/0", "--", "cat", "/var/log/dnsmasq.log"
+    )
+
+    assert "argotunnel.com" in dnsmasq_logs

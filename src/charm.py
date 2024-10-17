@@ -7,7 +7,9 @@
 
 """Cloudflared charm service."""
 
+import collections
 import logging
+import pathlib
 import subprocess  # nosec
 import typing
 
@@ -29,6 +31,9 @@ CHARMED_CLOUDFLARED_SNAP_NAME = "charmed-cloudflared"
 
 class InvalidConfig(ValueError):
     """Charm received invalid configurations."""
+
+
+CloudflaredSpec = collections.namedtuple("CloudflaredSpec", "tunnel_token nameserver")
 
 
 class CloudflaredCharm(ops.CharmBase):
@@ -66,7 +71,7 @@ class CloudflaredCharm(ops.CharmBase):
         """Handle changed configuration."""
         try:
             metrics_ports = self._get_instance_metrics_ports()
-            tunnel_tokens = self._get_instance_tunnel_tokens()
+            tunnel_specs = self._get_instance_tunnel_specs()
         except InvalidConfig as exc:
             logger.exception("charm received invalid configuration")
             self.unit.status = ops.BlockedStatus(str(exc))
@@ -87,14 +92,16 @@ class CloudflaredCharm(ops.CharmBase):
                 [
                     "snap",
                     "install",
-                    CHARMED_CLOUDFLARED_SNAP_NAME,
+                    "./src/charmed-cloudflared_2024.9.1_amd64.snap.zip",
+                    "--name",
                     install_instance,
                 ]
             )
-        for instance, tunnel_token in tunnel_tokens.items():
+        for instance, tunnel_spec in tunnel_specs.items():
             charmed_cloudflared = snap.SnapCache()[instance]
+            self._update_cloudflared_resolv_conf(instance, tunnel_spec.nameserver)
             config = {
-                "tunnel-token": tunnel_token,
+                "tunnel-token": tunnel_spec.tunnel_token,
                 "metrics-port": metrics_ports[instance],
             }
             if all(charmed_cloudflared.get(key) == str(value) for key, value in config.items()):
@@ -103,11 +110,29 @@ class CloudflaredCharm(ops.CharmBase):
             charmed_cloudflared.set(config, typed=True)
         self.unit.status = ops.ActiveStatus()
 
-    def _get_instance_tunnel_tokens(self) -> dict[str, str]:
-        """Get tunnel tokens for all charmed-cloudflared snap instances.
+    def _update_cloudflared_resolv_conf(self, name: str, nameserver: str | None) -> None:
+        """Updates the resolv.conf file for the specified charmed-cloudflared snap instance.
+
+        Args:
+            name: The name of the charmed-cloudflared snap instance.
+            nameserver: The nameserver to set for the instance. If None, the system default is used
+        """
+        if nameserver is None:
+            resolv_conf = pathlib.Path("/etc/resolv.conf").read_text(encoding="utf-8")
+        else:
+            resolv_conf = f"nameserver {nameserver}"
+        current_resolv_conf = pathlib.Path(f"/var/snap/{name}/current/etc/resolv.conf")
+        if (
+            not current_resolv_conf.exists()
+            or current_resolv_conf.read_text(encoding="utf-8") != resolv_conf
+        ):
+            current_resolv_conf.write_text(resolv_conf, encoding="utf-8")
+
+    def _get_instance_tunnel_specs(self) -> dict[str, CloudflaredSpec]:
+        """Get cloudflared configurations for all charmed-cloudflared snap instances.
 
         Returns:
-            A mapping of charmed-cloudflared snap instance name to tunnel tokens.
+            A mapping of charmed-cloudflared snap instance name to cloudflared configurations.
 
         Raises:
             InvalidConfig: If the tunnel-token charm configuration is invalid.
@@ -121,7 +146,12 @@ class CloudflaredCharm(ops.CharmBase):
             try:
                 secret = self.model.get_secret(id=tunnel_token_config)
                 secret_value = secret.get_content(refresh=True)["tunnel-token"]
-                return {f"{CHARMED_CLOUDFLARED_SNAP_NAME}_config0": secret_value}
+                return {
+                    f"{CHARMED_CLOUDFLARED_SNAP_NAME}_config0": CloudflaredSpec(
+                        tunnel_token=secret_value,
+                        nameserver=None,
+                    )
+                }
             except (ops.SecretNotFoundError, ops.ModelError, KeyError) as exc:
                 raise InvalidConfig("invalid tunnel-token config") from exc
         tunnel_tokens = {}
@@ -136,7 +166,12 @@ class CloudflaredCharm(ops.CharmBase):
             if relation.id > 999999:
                 raise RuntimeError("relation id exceeds maximum allowed value")
             if tunnel_token:
-                tunnel_tokens[f"{CHARMED_CLOUDFLARED_SNAP_NAME}_rel{relation.id}"] = tunnel_token
+                tunnel_tokens[f"{CHARMED_CLOUDFLARED_SNAP_NAME}_rel{relation.id}"] = (
+                    CloudflaredSpec(
+                        tunnel_token=tunnel_token,
+                        nameserver=self._cloudflared_route.get_nameserver(relation),
+                    )
+                )
         return tunnel_tokens
 
     def _get_instance_metrics_ports(self) -> dict[str, int]:
