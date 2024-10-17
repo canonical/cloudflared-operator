@@ -188,8 +188,10 @@ SRC_OVERWRITE = json.dumps(
 )
 
 
-@pytest_asyncio.fixture(scope="module")
-async def cloudflared_route_provider_1(model, cloudflared_charm) -> juju.application.Application:
+@pytest_asyncio.fixture(name="cloudflared_route_provider_1", scope="module")
+async def cloudflared_route_provider_1_fixture(
+    model, cloudflared_charm
+) -> juju.application.Application:
     """Deploy a cloudflared-route requirer using any-charm."""
     charm = await model.deploy(
         "any-charm",
@@ -203,8 +205,8 @@ async def cloudflared_route_provider_1(model, cloudflared_charm) -> juju.applica
     return charm
 
 
-@pytest_asyncio.fixture(scope="module")
-async def cloudflared_route_provider_2(model) -> juju.application.Application:
+@pytest_asyncio.fixture(name="cloudflared_route_provider_2", scope="module")
+async def cloudflared_route_provider_2_fixture(model) -> juju.application.Application:
     """Deploy a cloudflared-route requirer using any-charm."""
     charm = await model.deploy(
         "any-charm",
