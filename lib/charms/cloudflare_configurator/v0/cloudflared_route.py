@@ -35,7 +35,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 _TUNNEL_TOKEN_SECRET_ID_FIELD = "tunnel_token_secret_id"
 _TUNNEL_TOKEN_SECRET_VALUE_FIELD = "tunnel-token"
@@ -150,7 +150,7 @@ class CloudflaredRouteRequirer:
             ) from exc
 
     def get_nameserver(self, relation: ops.Relation) -> str | None:
-        """the nameserver used by the Cloudflared tunnel.
+        """Get the nameserver used by the Cloudflared tunnel.
 
         Args:
             relation: relation to receive the tunnel-token from.
