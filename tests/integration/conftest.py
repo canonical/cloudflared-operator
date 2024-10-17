@@ -272,4 +272,4 @@ async def dnsmasq_ip(ops_test, dnsmasq) -> str:
     status = json.loads(status)
     units = status["applications"][dnsmasq.name]["units"]
     for unit in units.values():
-        return unit["address"]
+        return unit["public-address"]

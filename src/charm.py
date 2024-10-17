@@ -112,7 +112,7 @@ class CloudflaredCharm(ops.CharmBase):
         self.unit.status = ops.ActiveStatus()
 
     def _update_cloudflared_resolv_conf(self, name: str, nameserver: str | None) -> None:
-        """Updates the resolv.conf file for the specified charmed-cloudflared snap instance.
+        """Update the resolv.conf file for the specified charmed-cloudflared snap instance.
 
         Args:
             name: The name of the charmed-cloudflared snap instance.
