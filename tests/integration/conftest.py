@@ -147,8 +147,10 @@ def model_fixture(ops_test) -> juju.model.Model:
     return ops_test.model
 
 
-@pytest_asyncio.fixture(scope="module")
-async def cloudflared_charm(model, pytestconfig: pytest.Config) -> juju.application.Application:
+@pytest_asyncio.fixture(name="cloudflared_charm", scope="module")
+async def cloudflared_charm_fixture(
+    model, pytestconfig: pytest.Config
+) -> juju.application.Application:
     """Deploy the cloudflared charm."""
     charm = pytestconfig.getoption("--charm-file")
     return await model.deploy(f"./{charm}", num_units=0)
@@ -176,6 +178,9 @@ SRC_OVERWRITE = json.dumps(
 
                 def unset_tunnel_token(self):
                     self.cloudflared_route.unset_tunnel_token()
+
+                def set_nameserver(self, nameserver):
+                    return self.cloudflared_route.set_nameserver(nameserver)
             """
         ),
         "cloudflared_route.py": (
@@ -185,10 +190,12 @@ SRC_OVERWRITE = json.dumps(
 )
 
 
-@pytest_asyncio.fixture(scope="module")
-async def cloudflared_route_provider_1(model) -> juju.application.Application:
+@pytest_asyncio.fixture(name="cloudflared_route_provider_1", scope="module")
+async def cloudflared_route_provider_1_fixture(
+    model, cloudflared_charm
+) -> juju.application.Application:
     """Deploy a cloudflared-route requirer using any-charm."""
-    return await model.deploy(
+    charm = await model.deploy(
         "any-charm",
         "cloudflared-route-provider-one",
         config={
@@ -196,12 +203,16 @@ async def cloudflared_route_provider_1(model) -> juju.application.Application:
         },
         channel="latest/edge",
     )
+    await model.integrate(f"{cloudflared_charm.name}:cloudflared-route", charm.name)
+    return charm
 
 
-@pytest_asyncio.fixture(scope="module")
-async def cloudflared_route_provider_2(model) -> juju.application.Application:
+@pytest_asyncio.fixture(name="cloudflared_route_provider_2", scope="module")
+async def cloudflared_route_provider_2_fixture(
+    model, cloudflared_charm
+) -> juju.application.Application:
     """Deploy a cloudflared-route requirer using any-charm."""
-    return await model.deploy(
+    charm = await model.deploy(
         "any-charm",
         "cloudflared-route-provider-two",
         config={
@@ -209,3 +220,75 @@ async def cloudflared_route_provider_2(model) -> juju.application.Application:
         },
         channel="latest/edge",
     )
+    await model.integrate(f"{cloudflared_charm.name}:cloudflared-route", charm.name)
+    return charm
+
+
+@pytest_asyncio.fixture(name="dnsmasq", scope="module")
+async def dnsmasq_fixture(ops_test, model) -> juju.application.Application:
+    """Deploy a dnsmasq server."""
+    dnsmasq = await model.deploy(
+        "ubuntu",
+        "dnsmasq",
+        channel="latest/edge",
+    )
+    await model.wait_for_idle()
+    await ops_test.juju("exec", "--application", dnsmasq.name, "--", "apt", "update")
+    await ops_test.juju(
+        "exec", "--application", dnsmasq.name, "--", "apt", "install", "dnsmasq", "-y"
+    )
+    await ops_test.juju(
+        "exec",
+        "--application",
+        dnsmasq.name,
+        "--",
+        "bash",
+        "-c",
+        "echo server=1.1.1.1 >> /etc/dnsmasq.conf",
+    )
+    await ops_test.juju(
+        "exec",
+        "--application",
+        dnsmasq.name,
+        "--",
+        "bash",
+        "-c",
+        "echo bind-interfaces >> /etc/dnsmasq.conf",
+    )
+    await ops_test.juju(
+        "exec",
+        "--application",
+        dnsmasq.name,
+        "--",
+        "bash",
+        "-c",
+        "echo log-queries >> /etc/dnsmasq.conf",
+    )
+    await ops_test.juju(
+        "exec",
+        "--application",
+        dnsmasq.name,
+        "--",
+        "bash",
+        "-c",
+        "echo log-facility=/var/log/dnsmasq.log >> /etc/dnsmasq.conf",
+    )
+    await ops_test.juju(
+        "exec",
+        "--application",
+        dnsmasq.name,
+        "--",
+        "systemctl",
+        "restart",
+        "dnsmasq",
+    )
+    return dnsmasq
+
+
+@pytest_asyncio.fixture(scope="module")
+async def dnsmasq_ip(ops_test, dnsmasq) -> str:
+    """Get the IP address of dnsmasq."""
+    _, status, _ = await ops_test.juju("status", "--format", "json")
+    status = json.loads(status)
+    units = status["applications"][dnsmasq.name]["units"]
+    return list(units.values())[0]["public-address"]
