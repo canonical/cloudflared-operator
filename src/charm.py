@@ -7,7 +7,6 @@
 
 """Cloudflared charm service."""
 
-import collections
 import logging
 import pathlib
 import subprocess  # nosec
@@ -33,7 +32,16 @@ class InvalidConfig(ValueError):
     """Charm received invalid configurations."""
 
 
-CloudflaredSpec = collections.namedtuple("CloudflaredSpec", "tunnel_token nameserver")
+class CloudflaredSpec(typing.NamedTuple):
+    """Cloudflared tunnel configuration.
+
+    Attributes:
+        tunnel_token: cloudflared tunnel token.
+        nameserver: nameserver used by the cloudflared tunnel.
+    """
+
+    tunnel_token: str
+    nameserver: str | None
 
 
 class CloudflaredCharm(ops.CharmBase):
