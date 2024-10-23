@@ -93,11 +93,11 @@ class CloudflaredCharm(ops.CharmBase):
             logger.exception("charm received invalid configuration")
             self.unit.status = ops.BlockedStatus(str(exc))
             return
-        installed_charmed_cloudflared = self._get_installed_cloudflared_snaps()
         required_snap_instances = set(metrics_ports.keys())
         if not required_snap_instances:
             self.unit.status = ops.WaitingStatus("waiting for tunnel token")
             return
+        installed_charmed_cloudflared = self._get_installed_cloudflared_snaps()
         for remove_instance in installed_charmed_cloudflared - required_snap_instances:
             logger.info("removing charmed-cloudflared instance: %s", remove_instance)
             snap.remove(remove_instance)
