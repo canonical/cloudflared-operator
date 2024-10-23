@@ -149,14 +149,22 @@ async def test_remove(ops_test, model, cloudflared_charm):
     await model.integrate("chrony", cloudflared_charm.name)
 
 
-async def test_secret_config_permission(ops_test, model, cloudflared_charm):
+async def test_secret_config_permission(
+    ops_test, model, cloudflared_charm, cloudflared_route_provider_1, cloudflared_route_provider_2
+):
     """
     arrange: create a tunnel token juju secret without granting the secret access to the charm.
     act: configure the charm with the incorrect juju secret.
     assume: cloudflared charm should enter error state.
     """
+    await ops_test.juju(
+        "remove-relation", cloudflared_charm.name, cloudflared_route_provider_1.name
+    )
+    await ops_test.juju(
+        "remove-relation", cloudflared_charm.name, cloudflared_route_provider_2.name
+    )
     _, secret_id, _ = await ops_test.juju(
-        "add-secret", "error-tunnel-token", f"tunnel-token=foobar"
+        "add-secret", "error-tunnel-token", "tunnel-token=foobar"
     )
     secret_id = secret_id.strip()
     await cloudflared_charm.set_config({"tunnel-token": secret_id})
