@@ -142,10 +142,11 @@ async def test_remove(ops_test, model, cloudflared_charm):
         "exec", "--unit", "chrony/0", "--", "cat", "/var/log/dnsmasq.log"
     )
     assert "charmed-cloudflared_" in snap_list
-    logger.info("snap list: %s", snap_list)
+    logger.info("snap list before removal: %s", snap_list)
     await ops_test.juju("remove-relation", cloudflared_charm.name, "chrony")
     await model.wait_for_idle()
     _, snap_list, _ = await ops_test.juju(
         "exec", "--unit", "chrony/0", "--", "cat", "/var/log/dnsmasq.log"
     )
     assert "charmed-cloudflared_" not in snap_list
+    logger.info("snap list after removal: %s", snap_list)
