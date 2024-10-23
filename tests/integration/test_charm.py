@@ -130,3 +130,22 @@ async def test_nameserver(
     )
 
     assert "argotunnel.com" in dnsmasq_logs
+
+
+async def test_remove(ops_test, model, cloudflared_charm):
+    """
+    arrange: deploy the cloudflared charm and cloudflared-route provider charms.
+    act: remove the cloudflared charm.
+    assume: cloudflared charm should uninstall all charmed-cloudflared snap instances.
+    """
+    _, snap_list, _ = await ops_test.juju(
+        "exec", "--unit", "chrony/0", "--", "cat", "/var/log/dnsmasq.log"
+    )
+    assert "charmed-cloudflared_" in snap_list
+    logger.info("snap list: %s", snap_list)
+    await ops_test.juju("remove-relation", cloudflared_charm.name, "chrony")
+    await model.wait_for_idle()
+    _, snap_list, _ = await ops_test.juju(
+        "exec", "--unit", "chrony/0", "--", "cat", "/var/log/dnsmasq.log"
+    )
+    assert "charmed-cloudflared_" not in snap_list

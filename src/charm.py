@@ -58,6 +58,10 @@ class CloudflaredCharm(ops.CharmBase):
         self.framework.observe(self.on.config_changed, self._reconcile)
         self.framework.observe(self.on.secret_changed, self._reconcile)
         self.framework.observe(self.on["cloudflared-route"].relation_changed, self._reconcile)
+        self.framework.observe(self.on["cloudflared-route"].relation_departed, self._reconcile)
+        self.framework.observe(self.on["juju-info"].relation_changed, self._reconcile)
+        self.framework.observe(self.on["juju-info"].relation_departed, self._reconcile)
+        self.framework.observe(self.on.stop, self._on_stop)
         self._snap_client = snap.SnapClient()
         self._cloudflared_route = CloudflaredRouteRequirer(self)
         self._grafana_agent = COSAgentProvider(
@@ -75,6 +79,11 @@ class CloudflaredCharm(ops.CharmBase):
         # pylint: disable=protected-access
         snap._system_set("experimental.parallel-instances", "true")
 
+    def _on_stop(self, _: ops.EventBase) -> None:
+        """Handle the stop event."""
+        for instance in self._get_installed_cloudflared_snaps():
+            snap.remove(instance)
+
     def _reconcile(self, _: ops.EventBase) -> None:
         """Handle changed configuration."""
         try:
@@ -84,11 +93,10 @@ class CloudflaredCharm(ops.CharmBase):
             logger.exception("charm received invalid configuration")
             self.unit.status = ops.BlockedStatus(str(exc))
             return
-        installed_charmed_cloudflared = set()
-        installed_snaps = self._snap_client.get_installed_snaps()
-        for installed_snap in installed_snaps:
-            if installed_snap["name"].startswith(CHARMED_CLOUDFLARED_SNAP_NAME):
-                installed_charmed_cloudflared.add(installed_snap["name"])
+        if not metrics_ports:
+            self.unit.status = ops.WaitingStatus("waiting for tunnel token")
+            return
+        installed_charmed_cloudflared = self._get_installed_cloudflared_snaps()
         required_snap_instances = set(metrics_ports.keys())
         for remove_instance in installed_charmed_cloudflared - required_snap_instances:
             logger.info("removing charmed-cloudflared instance: %s", remove_instance)
@@ -116,6 +124,19 @@ class CloudflaredCharm(ops.CharmBase):
             logger.info("configuring charmed-cloudflared instance: %s", instance)
             charmed_cloudflared.set(config, typed=True)
         self.unit.status = ops.ActiveStatus()
+
+    def _get_installed_cloudflared_snaps(self) -> set[str]:
+        """Get installed charmed-cloudflared snap instances.
+
+        Returns:
+            the names of the installed charmed-cloudflared snap instances.
+        """
+        installed_charmed_cloudflared = set()
+        installed_snaps = self._snap_client.get_installed_snaps()
+        for installed_snap in installed_snaps:
+            if installed_snap["name"].startswith(CHARMED_CLOUDFLARED_SNAP_NAME):
+                installed_charmed_cloudflared.add(installed_snap["name"])
+        return installed_charmed_cloudflared
 
     def _update_cloudflared_resolv_conf(self, name: str, nameserver: str | None) -> None:
         """Update the resolv.conf file for the specified charmed-cloudflared snap instance.
@@ -159,7 +180,7 @@ class CloudflaredCharm(ops.CharmBase):
                         nameserver=None,
                     )
                 }
-            except (ops.SecretNotFoundError, ops.ModelError, KeyError) as exc:
+            except (ops.SecretNotFoundError, KeyError) as exc:
                 raise InvalidConfig("invalid tunnel-token config") from exc
         tunnel_tokens = {}
         for relation in relations:
