@@ -123,6 +123,9 @@ class CloudflaredCharm(ops.CharmBase):
                 continue
             logger.info("configuring charmed-cloudflared instance: %s", instance)
             charmed_cloudflared.set(config, typed=True)
+            # work around the snap restart problem
+            charmed_cloudflared.stop()
+            charmed_cloudflared.start(enable=True)
         self.unit.status = ops.ActiveStatus()
 
     def _get_installed_cloudflared_snaps(self) -> set[str]:
