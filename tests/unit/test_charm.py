@@ -28,6 +28,17 @@ def test_install(monkeypatch):
     magic_mock.assert_called_once_with("experimental.parallel-instances", "true")
 
 
+def test_initial_state():
+    """
+    arrange: none.
+    act: run config-changed event without any tunnel-token input.
+    assert: charm should enter the waiting state.
+    """
+    context = ops.testing.Context(CloudflaredCharm)
+    out = context.run(context.on.config_changed(), ops.testing.State())
+    assert out.unit_status == ops.WaitingStatus("waiting for tunnel token")
+
+
 def test_conflict_config_integration():
     """
     arrange: create a scenario with cloudflared-router integrations and tunnel-token config at the
