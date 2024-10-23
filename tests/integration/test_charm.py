@@ -146,3 +146,21 @@ async def test_remove(ops_test, model, cloudflared_charm):
     _, snap_list, _ = await ops_test.juju("exec", "--unit", "chrony/0", "--", "snap", "list")
     assert "charmed-cloudflared_" not in snap_list
     logger.info("snap list after removal: %s", snap_list)
+    await model.integrate("chrony", cloudflared_charm.name)
+
+
+async def test_secret_config_permission(ops_test, model, cloudflared_charm):
+    """
+    arrange: create a tunnel token juju secret without granting the secret access to the charm.
+    act: configure the charm with the incorrect juju secret.
+    assume: cloudflared charm should enter error state.
+    """
+    _, secret_id, _ = await ops_test.juju(
+        "add-secret", "error-tunnel-token", f"tunnel-token=foobar"
+    )
+    secret_id = secret_id.strip()
+    await cloudflared_charm.set_config({"tunnel-token": secret_id})
+    await model.wait_for_idle(raise_on_error=False)
+    _, juju_status, _ = await ops_test.juju("status")
+    logger.info("current juju status: %s", juju_status)
+    assert "error" in juju_status
