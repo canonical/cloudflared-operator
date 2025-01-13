@@ -35,7 +35,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 
 _TUNNEL_TOKEN_SECRET_ID_FIELD = "tunnel_token_secret_id"
 _TUNNEL_TOKEN_SECRET_VALUE_FIELD = "tunnel-token"
@@ -79,7 +79,9 @@ class CloudflaredRouteProvider(ops.Object):
             relation_data[_TUNNEL_TOKEN_SECRET_ID_FIELD] = secret.id
         else:
             secret = self._charm.model.get_secret(id=secret_id)
-            secret.set_content({_TUNNEL_TOKEN_SECRET_VALUE_FIELD: tunnel_token})
+            content = secret.get_content(refresh=True)
+            if content[_TUNNEL_TOKEN_SECRET_VALUE_FIELD] != tunnel_token:
+                secret.set_content({_TUNNEL_TOKEN_SECRET_VALUE_FIELD: tunnel_token})
 
     def unset_tunnel_token(self, relation: ops.Relation | None = None) -> None:
         """Unset cloudflared tunnel-token in the integration.
