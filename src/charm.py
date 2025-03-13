@@ -168,7 +168,9 @@ class CloudflaredCharm(ops.CharmBase):
         ):
             snap_ca_certificates.parent.mkdir(parents=True, exist_ok=True)
             snap_ca_certificates.write_bytes(ca_certificates_content)
-            snap_ca_certificates.chmod(0o444)
+            snap_ca_certificates.chmod(0o444)  # ca-certificates.crt
+            snap_ca_certificates.parent.chmod(0o555)  # certs/
+            snap_ca_certificates.parent.parent.chmod(0o555)  # ssl/
 
     def _update_cloudflared_resolv_conf(self, name: str, nameserver: str | None) -> None:
         """Update the resolv.conf file for the specified charmed-cloudflared snap instance.
@@ -187,6 +189,7 @@ class CloudflaredCharm(ops.CharmBase):
             or current_resolv_conf.read_text(encoding="utf-8") != resolv_conf
         ):
             current_resolv_conf.write_text(resolv_conf, encoding="utf-8")
+            current_resolv_conf.chmod(0o444)
 
     def _get_instance_tunnel_specs(self) -> dict[str, CloudflaredSpec]:
         """Get cloudflared configurations for all charmed-cloudflared snap instances.
