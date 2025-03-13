@@ -157,7 +157,7 @@ class CloudflaredCharm(ops.CharmBase):
         Args:
             name: The name of the charmed-cloudflared snap instance.
         """
-        ca_certificates = pathlib.Path("/ssl/certs/ca-certificates.crt")
+        ca_certificates = pathlib.Path("/etc/ssl/certs/ca-certificates.crt")
         ca_certificates_content = ca_certificates.read_bytes()
         snap_ca_certificates = pathlib.Path(
             f"/var/snap/{name}/current/etc/ssl/certs/ca-certificates.crt"
