@@ -9,6 +9,7 @@
 
 import logging
 import pathlib
+import re
 import subprocess  # nosec
 import typing
 
@@ -87,6 +88,7 @@ class CloudflaredCharm(ops.CharmBase):
     def _reconcile(self, _: ops.EventBase) -> None:
         """Handle changed configuration."""
         try:
+            snap_channel = self._get_charmed_cloudflared_snap_channel()
             metrics_ports = self._get_instance_metrics_ports()
             tunnel_specs = self._get_instance_tunnel_specs()
         except InvalidConfig as exc:
@@ -101,11 +103,10 @@ class CloudflaredCharm(ops.CharmBase):
         for remove_instance in installed_charmed_cloudflared - required_snap_instances:
             logger.info("removing charmed-cloudflared instance: %s", remove_instance)
             snap.remove(remove_instance)
-        snap_channel = self.config["charmed-cloudflared-snap-channel"]
         for install_instance in required_snap_instances - installed_charmed_cloudflared:
             logger.info("installing charmed-cloudflared instance: %s", install_instance)
             # snap charm library doesn't support parallel instances
-            subprocess.check_call(  # nosec
+            self._subprocess_run(
                 [
                     "snap",
                     "install",
@@ -114,7 +115,7 @@ class CloudflaredCharm(ops.CharmBase):
                 ]
             )
         for instance, tunnel_spec in tunnel_specs.items():
-            subprocess.check_call(  # nosec
+            self._subprocess_run(
                 [
                     "snap",
                     "refresh",
@@ -137,6 +138,51 @@ class CloudflaredCharm(ops.CharmBase):
             charmed_cloudflared.stop()
             charmed_cloudflared.start(enable=True)
         self.unit.status = ops.ActiveStatus()
+
+    def _subprocess_run(self, cmd: list[str]) -> None:
+        """Run a subprocess command.
+
+        Raises:
+            CalledProcessError: subprocess run failed.
+        """
+        try:
+            subprocess.check_call(cmd, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)  # nosec
+        except subprocess.CalledProcessError as exc:
+            logger.error(
+                "subprocess command '%s' returned non-zero exit code: %s\noutput: %s",
+                " ".join(cmd),
+                exc.returncode,
+                exc.stdout,
+            )
+            raise
+
+    def _get_charmed_cloudflared_snap_channel(self) -> str:
+        """Get charmed-cloudflared-snap-channel charm configuration.
+
+        Returns:
+            charmed-cloudflared-snap-channel configuration value.
+
+        Raises:
+            InvalidConfig: charmed-cloudflared-snap-channel is not valid
+        """
+        channel = typing.cast(str, self.config["charmed-cloudflared-snap-channel"])
+        components = channel.split("/")
+        if len(components) > 3:
+            raise InvalidConfig("invalid charmed-cloudflared-snap-channel configuration")
+        track, risk, branch = None, None, None
+        if len(components) == 1:
+            risk = components[0]
+        elif len(components) == 2:
+            track, risk = components
+        else:
+            track, risk, branch = components
+        if track and not re.match("^[0-9a-z.-]+$", track):
+            raise InvalidConfig("invalid charmed-cloudflared-snap-channel configuration")
+        if not risk or risk not in {"stable", "candidate", "beta", "edge"}:
+            raise InvalidConfig("invalid charmed-cloudflared-snap-channel configuration")
+        if branch and not re.match("^[0-9a-z.-]+$", branch):
+            raise InvalidConfig("invalid charmed-cloudflared-snap-channel configuration")
+        return channel
 
     def _get_installed_cloudflared_snaps(self) -> set[str]:
         """Get installed charmed-cloudflared snap instances.

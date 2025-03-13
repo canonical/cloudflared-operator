@@ -9,6 +9,7 @@ from unittest import mock
 
 import ops
 import ops.testing
+import pytest
 
 import src.charm
 from charm import CloudflaredCharm
@@ -93,3 +94,38 @@ def test_invalid_integration_data():
         "received invalid data from cloudflared-route integration: "
         "secret doesn't have 'tunnel-token' field"
     )
+
+
+@pytest.mark.parametrize(
+    "channel,is_valid",
+    [
+        ("latest/edge", True),
+        ("edge", True),
+        ("latest/edge/test", True),
+        ("latest", False),
+        ("$/edge", False),
+        ("latest/test", False),
+        ("latest/edge/test/1", False),
+        ("", False),
+    ],
+)
+def test_charmed_cloudflared_snap_channel_config(channel: str, is_valid: bool):
+    """
+    arrange: create a scenario with different charmed-cloudflared-snap-channel.
+    act: run the config-changed event.
+    assert: cloudflared charm should enter blocked state when the config is invalid.
+    """
+    context = ops.testing.Context(CloudflaredCharm)
+
+    out = context.run(
+        context.on.config_changed(),
+        ops.testing.State(
+            config={"charmed-cloudflared-snap-channel": channel},
+        ),
+    )
+    if is_valid:
+        assert out.unit_status.message != (
+            "invalid charmed-cloudflared-snap-channel configuration"
+        )
+    else:
+        assert out.unit_status.message == "invalid charmed-cloudflared-snap-channel configuration"
