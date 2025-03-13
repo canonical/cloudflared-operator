@@ -92,6 +92,21 @@ async def test_cloudflared_route_integration(
     wait_for_tunnel_healthy(cloudflare_api, tunnel_token_2)
 
 
+async def test_update_snap_channel(ops_test, model, cloudflared_charm):
+    """
+    arrange: deploy the cloudflared charm.
+    act: update the charmed-cloudflared-snap-channel charm configuration.
+    assume: cloudflared charm should refresh all charmed-cloudflared snap instances.
+    """
+    await cloudflared_charm.set_config({"charmed-cloudflared-snap-channel": ""})
+    await model.wait_for_idle()
+    _, snap_list, _ = await ops_test.juju("exec", "--unit", "chrony/0", "--", "snap", "list")
+    assert "charmed-cloudflared_" in snap_list
+    for line in snap_list.splitlines():
+        if "charmed-cloudflared_" in line:
+            assert "latest/edge" in line
+
+
 async def test_nameserver(
     ops_test,
     model,

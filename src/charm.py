@@ -101,6 +101,7 @@ class CloudflaredCharm(ops.CharmBase):
         for remove_instance in installed_charmed_cloudflared - required_snap_instances:
             logger.info("removing charmed-cloudflared instance: %s", remove_instance)
             snap.remove(remove_instance)
+        snap_channel = self.config["charmed-cloudflared-snap-channel"]
         for install_instance in required_snap_instances - installed_charmed_cloudflared:
             logger.info("installing charmed-cloudflared instance: %s", install_instance)
             # snap charm library doesn't support parallel instances
@@ -108,12 +109,21 @@ class CloudflaredCharm(ops.CharmBase):
                 [
                     "snap",
                     "install",
-                    CHARMED_CLOUDFLARED_SNAP_NAME,
+                    f"--channel={snap_channel}",
+                    install_instance,
+                ]
+            )
+            subprocess.check_call(  # nosec
+                [
+                    "snap",
+                    "refresh",
+                    f"--channel={snap_channel}",
                     install_instance,
                 ]
             )
         for instance, tunnel_spec in tunnel_specs.items():
             charmed_cloudflared = snap.SnapCache()[instance]
+            self._update_ca_certificate_crt(instance)
             self._update_cloudflared_resolv_conf(instance, tunnel_spec.nameserver)
             config = {
                 "tunnel-token": tunnel_spec.tunnel_token,
@@ -140,6 +150,25 @@ class CloudflaredCharm(ops.CharmBase):
             if installed_snap["name"].startswith(CHARMED_CLOUDFLARED_SNAP_NAME):
                 installed_charmed_cloudflared.add(installed_snap["name"])
         return installed_charmed_cloudflared
+
+    def _update_ca_certificate_crt(self, name: str) -> None:
+        """Update the ca-certificates.crt file for the specified charmed-cloudflared snap instance.
+
+        Args:
+            name: The name of the charmed-cloudflared snap instance.
+        """
+        ca_certificates = pathlib.Path("/ssl/certs/ca-certificates.crt")
+        ca_certificates_content = ca_certificates.read_bytes()
+        snap_ca_certificates = pathlib.Path(
+            f"/var/snap/{name}/current/etc/ssl/certs/ca-certificates.crt"
+        )
+        if (
+            not snap_ca_certificates.exists()
+            or ca_certificates_content != snap_ca_certificates.read_bytes()
+        ):
+            snap_ca_certificates.parent.mkdir(parents=True, exist_ok=True)
+            snap_ca_certificates.write_bytes(ca_certificates_content)
+            snap_ca_certificates.chmod(0o444)
 
     def _update_cloudflared_resolv_conf(self, name: str, nameserver: str | None) -> None:
         """Update the resolv.conf file for the specified charmed-cloudflared snap instance.

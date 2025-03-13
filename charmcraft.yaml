@@ -29,7 +29,11 @@ config:
         You can create this juju secret by using the following command:
         `juju add-secret my-token tunnel-token=<cloudflared-tunnel-token> && juju grant-secret my-token cloudflared`
       type: secret
-
+    charmed-cloudflared-snap-channel:
+      type: string
+      default: latest/stable
+      description: >-
+        Select the channel for the charmed-cloudflared snap used by the charm.
 requires:
   cloudflared-route:
     interface: cloudflared-route
