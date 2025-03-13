@@ -98,7 +98,7 @@ async def test_update_snap_channel(ops_test, model, cloudflared_charm):
     act: update the charmed-cloudflared-snap-channel charm configuration.
     assume: cloudflared charm should refresh all charmed-cloudflared snap instances.
     """
-    await cloudflared_charm.set_config({"charmed-cloudflared-snap-channel": ""})
+    await cloudflared_charm.set_config({"charmed-cloudflared-snap-channel": "latest/edge"})
     await model.wait_for_idle()
     _, snap_list, _ = await ops_test.juju("exec", "--unit", "chrony/0", "--", "snap", "list")
     assert "charmed-cloudflared_" in snap_list
