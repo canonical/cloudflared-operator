@@ -113,15 +113,15 @@ class CloudflaredCharm(ops.CharmBase):
                     install_instance,
                 ]
             )
+        for instance, tunnel_spec in tunnel_specs.items():
             subprocess.check_call(  # nosec
                 [
                     "snap",
                     "refresh",
                     f"--channel={snap_channel}",
-                    install_instance,
+                    instance,
                 ]
             )
-        for instance, tunnel_spec in tunnel_specs.items():
             charmed_cloudflared = snap.SnapCache()[instance]
             self._update_ca_certificate_crt(instance)
             self._update_cloudflared_resolv_conf(instance, tunnel_spec.nameserver)
