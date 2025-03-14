@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2024 Canonical Ltd.
+# Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 # Learn more at: https://juju.is/docs/sdk
@@ -9,6 +9,7 @@
 
 import logging
 import pathlib
+import re
 import subprocess  # nosec
 import typing
 
@@ -87,6 +88,7 @@ class CloudflaredCharm(ops.CharmBase):
     def _reconcile(self, _: ops.EventBase) -> None:
         """Handle changed configuration."""
         try:
+            snap_channel = self._get_charmed_cloudflared_snap_channel()
             metrics_ports = self._get_instance_metrics_ports()
             tunnel_specs = self._get_instance_tunnel_specs()
         except InvalidConfig as exc:
@@ -104,16 +106,25 @@ class CloudflaredCharm(ops.CharmBase):
         for install_instance in required_snap_instances - installed_charmed_cloudflared:
             logger.info("installing charmed-cloudflared instance: %s", install_instance)
             # snap charm library doesn't support parallel instances
-            subprocess.check_call(  # nosec
+            self._subprocess_run(
                 [
                     "snap",
                     "install",
-                    CHARMED_CLOUDFLARED_SNAP_NAME,
+                    f"--channel={snap_channel}",
                     install_instance,
                 ]
             )
         for instance, tunnel_spec in tunnel_specs.items():
+            self._subprocess_run(
+                [
+                    "snap",
+                    "refresh",
+                    f"--channel={snap_channel}",
+                    instance,
+                ]
+            )
             charmed_cloudflared = snap.SnapCache()[instance]
+            self._update_ca_certificate_crt(instance)
             self._update_cloudflared_resolv_conf(instance, tunnel_spec.nameserver)
             config = {
                 "tunnel-token": tunnel_spec.tunnel_token,
@@ -128,6 +139,51 @@ class CloudflaredCharm(ops.CharmBase):
             charmed_cloudflared.start(enable=True)
         self.unit.status = ops.ActiveStatus()
 
+    def _subprocess_run(self, cmd: list[str]) -> None:
+        """Run a subprocess command.
+
+        Raises:
+            CalledProcessError: subprocess run failed.
+        """
+        try:
+            subprocess.check_call(cmd, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)  # nosec
+        except subprocess.CalledProcessError as exc:
+            logger.error(
+                "subprocess command '%s' returned non-zero exit code: %s\noutput: %s",
+                " ".join(cmd),
+                exc.returncode,
+                exc.stdout,
+            )
+            raise
+
+    def _get_charmed_cloudflared_snap_channel(self) -> str:
+        """Get charmed-cloudflared-snap-channel charm configuration.
+
+        Returns:
+            charmed-cloudflared-snap-channel configuration value.
+
+        Raises:
+            InvalidConfig: charmed-cloudflared-snap-channel is not valid
+        """
+        channel = typing.cast(str, self.config["charmed-cloudflared-snap-channel"])
+        components = channel.split("/")
+        if len(components) > 3:
+            raise InvalidConfig("invalid charmed-cloudflared-snap-channel configuration")
+        track, risk, branch = None, None, None
+        if len(components) == 1:
+            risk = components[0]
+        elif len(components) == 2:
+            track, risk = components
+        else:
+            track, risk, branch = components
+        if track and not re.match("^[0-9a-z.-]+$", track):
+            raise InvalidConfig("invalid charmed-cloudflared-snap-channel configuration")
+        if not risk or risk not in {"stable", "candidate", "beta", "edge"}:
+            raise InvalidConfig("invalid charmed-cloudflared-snap-channel configuration")
+        if branch and not re.match("^[0-9a-z.-]+$", branch):
+            raise InvalidConfig("invalid charmed-cloudflared-snap-channel configuration")
+        return channel
+
     def _get_installed_cloudflared_snaps(self) -> set[str]:
         """Get installed charmed-cloudflared snap instances.
 
@@ -140,6 +196,27 @@ class CloudflaredCharm(ops.CharmBase):
             if installed_snap["name"].startswith(CHARMED_CLOUDFLARED_SNAP_NAME):
                 installed_charmed_cloudflared.add(installed_snap["name"])
         return installed_charmed_cloudflared
+
+    def _update_ca_certificate_crt(self, name: str) -> None:
+        """Update the ca-certificates.crt file for the specified charmed-cloudflared snap instance.
+
+        Args:
+            name: The name of the charmed-cloudflared snap instance.
+        """
+        ca_certificates = pathlib.Path("/etc/ssl/certs/ca-certificates.crt")
+        ca_certificates_content = ca_certificates.read_bytes()
+        snap_ca_certificates = pathlib.Path(
+            f"/var/snap/{name}/current/etc/ssl/certs/ca-certificates.crt"
+        )
+        if (
+            not snap_ca_certificates.exists()
+            or ca_certificates_content != snap_ca_certificates.read_bytes()
+        ):
+            snap_ca_certificates.parent.mkdir(parents=True, exist_ok=True)
+            snap_ca_certificates.write_bytes(ca_certificates_content)
+            snap_ca_certificates.chmod(0o444)  # ca-certificates.crt
+            snap_ca_certificates.parent.chmod(0o555)  # certs/
+            snap_ca_certificates.parent.parent.chmod(0o555)  # ssl/
 
     def _update_cloudflared_resolv_conf(self, name: str, nameserver: str | None) -> None:
         """Update the resolv.conf file for the specified charmed-cloudflared snap instance.
@@ -158,6 +235,7 @@ class CloudflaredCharm(ops.CharmBase):
             or current_resolv_conf.read_text(encoding="utf-8") != resolv_conf
         ):
             current_resolv_conf.write_text(resolv_conf, encoding="utf-8")
+            current_resolv_conf.chmod(0o444)
 
     def _get_instance_tunnel_specs(self) -> dict[str, CloudflaredSpec]:
         """Get cloudflared configurations for all charmed-cloudflared snap instances.
