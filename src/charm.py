@@ -8,6 +8,7 @@
 """Cloudflared charm service."""
 
 import logging
+import os
 import pathlib
 import re
 import subprocess  # nosec
@@ -130,6 +131,15 @@ class CloudflaredCharm(ops.CharmBase):
                 "tunnel-token": tunnel_spec.tunnel_token,
                 "metrics-port": metrics_ports[instance],
             }
+            http_proxy = os.environ.get("JUJU_CHARM_HTTP_PROXY")
+            https_proxy = os.environ.get("JUJU_CHARM_HTTPS_PROXY")
+            no_proxy = os.environ.get("JUJU_CHARM_NO_PROXY")
+            if http_proxy:
+                config["http-proxy"] = http_proxy
+            if https_proxy:
+                config["https-proxy"] = https_proxy
+            if no_proxy:
+                config["no-proxy"] = no_proxy
             if all(charmed_cloudflared.get(key) == str(value) for key, value in config.items()):
                 continue
             logger.info("configuring charmed-cloudflared instance: %s", instance)
