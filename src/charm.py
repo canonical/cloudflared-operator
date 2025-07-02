@@ -151,12 +151,9 @@ class CloudflaredCharm(ops.CharmBase):
         http_proxy = os.environ.get("JUJU_CHARM_HTTP_PROXY")
         https_proxy = os.environ.get("JUJU_CHARM_HTTPS_PROXY")
         no_proxy = os.environ.get("JUJU_CHARM_NO_PROXY")
-        if http_proxy:
-            config["http-proxy"] = http_proxy
-        if https_proxy:
-            config["https-proxy"] = https_proxy
-        if no_proxy:
-            config["no-proxy"] = no_proxy
+        config["http-proxy"] = http_proxy or ""
+        config["https-proxy"] = https_proxy or ""
+        config["no-proxy"] = no_proxy or ""
         return config
 
     def _subprocess_run(self, cmd: list[str]) -> None:
