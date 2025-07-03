@@ -147,13 +147,11 @@ class CloudflaredCharm(ops.CharmBase):
         Returns:
             A dictionary of HTTP proxy related configurations.
         """
-        config = {}
-        http_proxy = os.environ.get("JUJU_CHARM_HTTP_PROXY")
-        https_proxy = os.environ.get("JUJU_CHARM_HTTPS_PROXY")
-        no_proxy = os.environ.get("JUJU_CHARM_NO_PROXY")
-        config["http-proxy"] = http_proxy or ""
-        config["https-proxy"] = https_proxy or ""
-        config["no-proxy"] = no_proxy or ""
+        config = {
+            "http-proxy": os.environ.get("JUJU_CHARM_HTTP_PROXY", ""),
+            "https-proxy": os.environ.get("JUJU_CHARM_HTTPS_PROXY", ""),
+            "no-proxy": os.environ.get("JUJU_CHARM_NO_PROXY", ""),
+        }
         return config
 
     def _subprocess_run(self, cmd: list[str]) -> None:
