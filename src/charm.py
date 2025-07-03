@@ -8,6 +8,7 @@
 """Cloudflared charm service."""
 
 import logging
+import os
 import pathlib
 import re
 import subprocess  # nosec
@@ -129,6 +130,7 @@ class CloudflaredCharm(ops.CharmBase):
             config = {
                 "tunnel-token": tunnel_spec.tunnel_token,
                 "metrics-port": metrics_ports[instance],
+                **self._proxy_config(),
             }
             if all(charmed_cloudflared.get(key) == str(value) for key, value in config.items()):
                 continue
@@ -138,6 +140,18 @@ class CloudflaredCharm(ops.CharmBase):
             charmed_cloudflared.stop()
             charmed_cloudflared.start(enable=True)
         self.unit.status = ops.ActiveStatus()
+
+    def _proxy_config(self) -> dict[str, str]:
+        """Get HTTP proxy related configurations from the juju model configuration.
+
+        Returns:
+            A dictionary of HTTP proxy related configurations.
+        """
+        return {
+            "http-proxy": os.environ.get("JUJU_CHARM_HTTP_PROXY", ""),
+            "https-proxy": os.environ.get("JUJU_CHARM_HTTPS_PROXY", ""),
+            "no-proxy": os.environ.get("JUJU_CHARM_NO_PROXY", ""),
+        }
 
     def _subprocess_run(self, cmd: list[str]) -> None:
         """Run a subprocess command.
