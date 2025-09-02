@@ -3,8 +3,8 @@
 [![Promote charm](https://github.com/canonical/cloudflared-operator/actions/workflows/promote_charm.yaml/badge.svg)](https://github.com/canonical/cloudflared-operator/actions/workflows/promote_charm.yaml)
 [![Discourse Status](https://img.shields.io/discourse/status?server=https%3A%2F%2Fdiscourse.charmhub.io&style=flat&label=CharmHub%20Discourse)](https://discourse.charmhub.io)
 
-A [Juju](https://juju.is/) [charm](https://juju.is/docs/olm/charmed-operators) 
-for deploying and managing the [cloudflared](https://cloudflared-project.org) tunnel
+A [Juju](https://juju.is/) [charm](https://documentation.ubuntu.com/juju/3.6/reference/charm/) 
+for deploying and managing the [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) tunnel
 in your systems.
 
 This charm simplifies the configuration and maintenance of `cloudflared` across a 
