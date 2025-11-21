@@ -13,7 +13,7 @@ jobs:
     with:
       charmcraft-channel: latest/edge
       provider: lxd
-      juju-channel: 3.5/stable
+      juju-channel: 3.6/stable
   allure-report:
     if: ${{ !cancelled() && github.event_name == 'schedule' }}
     needs:
