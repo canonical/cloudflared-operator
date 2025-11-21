@@ -15,7 +15,7 @@ jobs:
       provider: lxd
       juju-channel: 3.5/stable
   allure-report:
-    if: ${{ (success() || failure()) && github.event_name == 'schedule' }}
+    if: ${{ !cancelled() && github.event_name == 'schedule' }}
     needs:
     - integration-tests
     uses: canonical/operator-workflows/.github/workflows/allure_report.yaml@main
