@@ -1,0 +1,117 @@
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  cloudflared/1 [allocating] waiting: agent initialising
+  chrony/0 [idle] active: 
+  cloudflared-route-provider-one/0 [idle] active: 
+  cloudflared-route-provider-two/0 [executing] active: 
+  dnsmasq/0 [idle] active: 
+[32mINFO    [0m integration.test_charm:test_charm.py:188 current juju status: Model            Controller           Cloud/Region         Version  SLA          Timestamp
+test-charm-3c8u  github-pr-90919-lxd  localhost/localhost  3.6.11   unsupported  15:25:41Z
+
+App                             Version  Status  Scale  Charm        Channel      Rev  Exposed  Message
+chrony                                   active      1  chrony       latest/edge   94  no       
+cloudflared                              error       1  cloudflared                 0  no       hook failed: "config-changed"
+cloudflared-route-provider-one           active      1  any-charm    latest/edge  100  no       
+cloudflared-route-provider-two           active      1  any-charm    latest/edge  100  no       
+dnsmasq                         24.04    active      1  ubuntu       latest/edge   26  no       
+
+Unit                               Workload  Agent  Machine  Public address  Ports    Message
+chrony/0*                          active    idle   0        10.149.133.133  123/udp  
+  cloudflared/1*                   error     idle            10.149.133.133           hook failed: "config-changed"
+cloudflared-route-provider-one/0*  active    idle   1        10.149.133.252           
+cloudflared-route-provider-two/0*  active    idle   2        10.149.133.222           
+dnsmasq/0*                         active    idle   3        10.149.133.166           
+
+Machine  State    Address         Inst id        Base          AZ             Message
+0        started  10.149.133.133  juju-078858-0  ubuntu@24.04  runnervmfxdz0  Running
+1        started  10.149.133.252  juju-078858-1  ubuntu@24.04  runnervmfxdz0  Running
+2        started  10.149.133.222  juju-078858-2  ubuntu@24.04  runnervmfxdz0  Running
+3        started  10.149.133.166  juju-078858-3  ubuntu@24.04  runnervmfxdz0  Running
+[32mINFO    [0m integration.conftest:conftest.py:122 deleting tunnel f8690491-8b7e-4c32-b7e7-9ce07a180c90
+[32mINFO    [0m integration.conftest:conftest.py:122 deleting tunnel d294533d-9bb9-4c58-b739-9232005e55dd
+[32mINFO    [0m integration.conftest:conftest.py:122 deleting tunnel 4b53e738-0891-41d7-b3cc-dacb9c27ca00
+[32mINFO    [0m integration.conftest:conftest.py:122 deleting tunnel 87de41c3-fd50-4ec1-83f0-3d339dccd8d4
+[32mINFO    [0m pytest_operator.plugin:plugin.py:951 Model status:
+
+Model            Controller           Cloud/Region         Version  SLA          Timestamp
+test-charm-3c8u  github-pr-90919-lxd  localhost/localhost  3.6.11   unsupported  15:25:44Z
+
+App                             Version  Status  Scale  Charm        Channel      Rev  Exposed  Message
+chrony                                   active      1  chrony       latest/edge   94  no       
+cloudflared                              error       1  cloudflared                 0  no       hook failed: "config-changed"
+cloudflared-route-provider-one           active      1  any-charm    latest/edge  100  no       
+cloudflared-route-provider-two           active      1  any-charm    latest/edge  100  no       
+dnsmasq                         24.04    active      1  ubuntu       latest/edge   26  no       
+
+Unit                               Workload  Agent  Machine  Public address  Ports    Message
+chrony/0*                          active    idle   0        10.149.133.133  123/udp  
+  cloudflared/1*                   error     idle            10.149.133.133           hook failed: "config-changed"
+cloudflared-route-provider-one/0*  active    idle   1        10.149.133.252           
+cloudflared-route-provider-two/0*  active    idle   2        10.149.133.222           
+dnsmasq/0*                         active    idle   3        10.149.133.166           
+
+Machine  State    Address         Inst id        Base          AZ             Message
+0        started  10.149.133.133  juju-078858-0  ubuntu@24.04  runnervmfxdz0  Running
+1        started  10.149.133.252  juju-078858-1  ubuntu@24.04  runnervmfxdz0  Running
+2        started  10.149.133.222  juju-078858-2  ubuntu@24.04  runnervmfxdz0  Running
+3        started  10.149.133.166  juju-078858-3  ubuntu@24.04  runnervmfxdz0  Running
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:957 Juju error logs:
+
+machine-0: 15:18:06 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-0: 15:18:06 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 15:20:49 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-1: 15:20:49 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 15:21:01 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-2: 15:21:01 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 15:23:30 ERROR juju.worker.dependency "kvm-container-provisioner" manifold worker returned unexpected error: container types not yet available
+machine-3: 15:23:30 ERROR juju.worker.dependency "lxd-container-provisioner" manifold worker returned unexpected error: container types not yet available
+unit-cloudflared-1: 15:25:25 ERROR unit.cloudflared/1.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-cloudflared-1/charm/venv/ops/model.py", line 3666, in _run
+    result = subprocess.run(args, **kwargs)  # type: ignore
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '('/var/lib/juju/tools/unit-cloudflared-1/secret-get', 'secret:d4gtbo0235lsvbdk6r4g', '--format=json')' returned non-zero exit status 1.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-cloudflared-1/charm/./src/charm.py", line 319, in <module>
+    ops.main(CloudflaredCharm)
+  File "/var/lib/juju/agents/unit-cloudflared-1/charm/venv/ops/__init__.py", line 360, in __call__
+    return _main.main(charm_class=charm_class, use_juju_for_storage=use_juju_for_storage)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-cloudflared-1/charm/venv/ops/_main.py", line 504, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-cloudflared-1/charm/venv/ops/_main.py", line 488, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-cloudflared-1/charm/venv/ops/_main.py", line 423, in _emit
+    self._emit_charm_event(self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-cloudflared-1/charm/venv/ops/_main.py", line 467, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-cloudflared-1/charm/venv/ops/framework.py", line 351, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-cloudflared-1/charm/venv/ops/framework.py", line 924, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-cloudflared-1/charm/venv/ops/framework.py", line 1036, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-cloudflared-1/charm/./src/charm.py", line 94, in _reconcile
+    tunnel_specs = self._get_instance_tunnel_specs()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-cloudflared-1/charm/./src/charm.py", line 270, in _get_instance_tunnel_specs
+    secret = self.model.get_secret(id=tunnel_token_config)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-cloudflared-1/charm/venv/ops/model.py", line 326, in get_secret
+    content = self._backend.secret_get(id=id, label=label)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-cloudflared-1/charm/venv/ops/model.py", line 4075, in secret_get
+    result = self._run('secret-get', *args, return_output=True, use_json=True)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lib/juju/agents/unit-cloudflared-1/charm/venv/ops/model.py", line 3669, in _run
+    raise ModelError(e.stderr) from e
+ops.model.ModelError: ERROR permission denied
+
+unit-cloudflared-1: 15:25:25 ERROR juju.worker.uniter.operation hook "config-changed" (via hook dispatching script: dispatch) failed: exit status 1
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:1039 Forgetting model main...
