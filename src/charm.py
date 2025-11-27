@@ -30,7 +30,7 @@ TUNNEL_TOKEN_CONFIG_NAME = "tunnel-token"  # nosec
 CHARMED_CLOUDFLARED_SNAP_NAME = "charmed-cloudflared"
 
 
-class InvalidConfig(ValueError):
+class InvalidConfigError(ValueError):
     """Charm received invalid configurations."""
 
 
@@ -92,7 +92,7 @@ class CloudflaredCharm(ops.CharmBase):
             snap_channel = self._get_charmed_cloudflared_snap_channel()
             metrics_ports = self._get_instance_metrics_ports()
             tunnel_specs = self._get_instance_tunnel_specs()
-        except InvalidConfig as exc:
+        except InvalidConfigError as exc:
             logger.exception("charm received invalid configuration")
             self.unit.status = ops.BlockedStatus(str(exc))
             return
@@ -177,12 +177,12 @@ class CloudflaredCharm(ops.CharmBase):
             charmed-cloudflared-snap-channel configuration value.
 
         Raises:
-            InvalidConfig: charmed-cloudflared-snap-channel is not valid
+            InvalidConfigError: charmed-cloudflared-snap-channel is not valid
         """
         channel = typing.cast(str, self.config["charmed-cloudflared-snap-channel"])
         components = channel.split("/")
         if len(components) > 3:
-            raise InvalidConfig("invalid charmed-cloudflared-snap-channel configuration")
+            raise InvalidConfigError("invalid charmed-cloudflared-snap-channel configuration")
         track, risk, branch = None, None, None
         if len(components) == 1:
             risk = components[0]
@@ -191,11 +191,11 @@ class CloudflaredCharm(ops.CharmBase):
         else:
             track, risk, branch = components
         if track and not re.match("^[0-9a-z.-]+$", track):
-            raise InvalidConfig("invalid charmed-cloudflared-snap-channel configuration")
+            raise InvalidConfigError("invalid charmed-cloudflared-snap-channel configuration")
         if not risk or risk not in {"stable", "candidate", "beta", "edge"}:
-            raise InvalidConfig("invalid charmed-cloudflared-snap-channel configuration")
+            raise InvalidConfigError("invalid charmed-cloudflared-snap-channel configuration")
         if branch and not re.match("^[0-9a-z.-]+$", branch):
-            raise InvalidConfig("invalid charmed-cloudflared-snap-channel configuration")
+            raise InvalidConfigError("invalid charmed-cloudflared-snap-channel configuration")
         return channel
 
     def _get_installed_cloudflared_snaps(self) -> set[str]:
@@ -258,13 +258,13 @@ class CloudflaredCharm(ops.CharmBase):
             A mapping of charmed-cloudflared snap instance name to cloudflared configurations.
 
         Raises:
-            InvalidConfig: If the tunnel-token charm configuration is invalid.
+            InvalidConfigError: If the tunnel-token charm configuration is invalid.
             RuntimeError: If the relation ID exceeds maximum allowed value.
         """
         tunnel_token_config = typing.cast(str | None, self.config.get(TUNNEL_TOKEN_CONFIG_NAME))
         relations = self.model.relations[CLOUDFLARED_ROUTE_INTEGRATION_NAME]
         if tunnel_token_config and relations:
-            raise InvalidConfig("tunnel-token is provided by both the config and integration")
+            raise InvalidConfigError("tunnel-token is provided by both the config and integration")
         if tunnel_token_config:
             try:
                 secret = self.model.get_secret(id=tunnel_token_config)
@@ -276,13 +276,13 @@ class CloudflaredCharm(ops.CharmBase):
                     )
                 }
             except (ops.SecretNotFoundError, KeyError) as exc:
-                raise InvalidConfig("invalid tunnel-token config") from exc
+                raise InvalidConfigError("invalid tunnel-token config") from exc
         tunnel_tokens = {}
         for relation in relations:
             try:
                 tunnel_token = self._cloudflared_route.get_tunnel_token(relation)
             except InvalidIntegration as exc:
-                raise InvalidConfig(
+                raise InvalidConfigError(
                     "received invalid data from "
                     f"{CLOUDFLARED_ROUTE_INTEGRATION_NAME} integration: {exc}"
                 ) from exc
