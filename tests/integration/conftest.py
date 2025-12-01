@@ -291,4 +291,4 @@ async def dnsmasq_ip(ops_test, dnsmasq) -> str:
     _, status, _ = await ops_test.juju("status", "--format", "json")
     status = json.loads(status)
     units = status["applications"][dnsmasq.name]["units"]
-    return list(units.values())[0]["public-address"]
+    return next(iter(units.values()))["public-address"]
