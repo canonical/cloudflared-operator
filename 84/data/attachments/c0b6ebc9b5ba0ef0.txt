@@ -1,0 +1,23 @@
+[33mWARNING [0m juju.client.connection:connection.py:927 unexpected facade SSHServer received from the controller
+[32mINFO    [0m pytest_operator.plugin:plugin.py:762 Adding model github-pr-90919-lxd:test-charm-opj1 on cloud localhost
+[33mWARNING [0m juju.client.connection:connection.py:927 unexpected facade SSHServer received from the controller
+[33mWARNING [0m juju.client.connection:connection.py:927 unexpected facade SSHSession received from the controller
+[33mWARNING [0m juju.client.connection:connection.py:927 unexpected facade SSHTunneler received from the controller
+[32mINFO    [0m juju.model:model.py:2098 Deploying local:cloudflared-0
+[32mINFO    [0m juju.model:model.py:2098 Deploying ch:amd64/noble/chrony-97
+[32mINFO    [0m integration.conftest:conftest.py:63 created tunnel ec1fe668-199d-44fb-8b38-5c6e100ec807
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  cloudflared (not enough units yet - 0/1)
+  chrony/0 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  cloudflared (not enough units yet - 0/1)
+  chrony/0 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  cloudflared (not enough units yet - 0/1)
+  chrony/0 [executing] maintenance: installing chrony
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  cloudflared/0 [executing] maintenance: installing charm software
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  cloudflared/0 [idle] active: 
+  chrony/0 [idle] active: 
+[32mINFO    [0m integration.test_charm:test_charm.py:30 tunnel status: healthy
