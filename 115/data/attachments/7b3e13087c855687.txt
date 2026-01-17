@@ -1,0 +1,11 @@
+[32mINFO    [0m integration.test_charm:test_charm.py:158 snap list before removal: Name                      Version    Rev    Tracking       Publisher                  Notes
+charmed-cloudflared_rel2  2025.11.1  60     latest/edge    platform-engineering-team  -
+charmed-cloudflared_rel4  2025.11.1  60     latest/edge    platform-engineering-team  -
+core24                    20251210   1267   latest/stable  canonical**                base
+snapd                     2.73       25935  latest/stable  canonical**                snapd
+
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  cloudflared (waiting for exactly 0 units, current : 1)
+[32mINFO    [0m integration.test_charm:test_charm.py:163 snap list after removal: Name    Version   Rev    Tracking       Publisher    Notes
+core24  20251210  1267   latest/stable  canonical**  base
+snapd   2.73      25935  latest/stable  canonical**  snapd
