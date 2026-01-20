@@ -13,7 +13,7 @@ Confirm that all units are active and idle.
 
 ## Refresh to the latest revision
 
-To upgrade cloudflared to the latest revision from Charmhub:
+Upgrade cloudflared to the latest revision from Charmhub:
 
 ```bash
 juju refresh cloudflared
