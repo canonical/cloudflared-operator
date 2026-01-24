@@ -1,0 +1,30 @@
+[32mINFO    [0m juju.model:model.py:2098 Deploying ch:amd64/noble/any-charm-124
+[32mINFO    [0m juju.model:model.py:2098 Deploying ch:amd64/noble/any-charm-124
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  cloudflared/0 [idle] active: 
+  chrony/0 [idle] active: 
+  cloudflared-route-provider-one/0 [allocating] waiting: waiting for machine
+  cloudflared-route-provider-two/0 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  cloudflared-route-provider-one/0 [allocating] waiting: waiting for machine
+  cloudflared-route-provider-two/0 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  cloudflared-route-provider-one/0 [allocating] waiting: waiting for machine
+  cloudflared-route-provider-two/0 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  cloudflared/0 [idle] active: 
+  cloudflared-route-provider-two/0 [idle] active: 
+[32mINFO    [0m integration.conftest:conftest.py:63 created tunnel 60e85c4e-4c1f-40c3-bf84-2a325983ad47
+[32mINFO    [0m integration.conftest:conftest.py:63 created tunnel 803e7779-964a-4561-9bbb-fd6524f809c9
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  cloudflared/0 [executing] active: 
+  chrony/0 [idle] active: 
+  cloudflared-route-provider-one/0 [idle] active: 
+  cloudflared-route-provider-two/0 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  cloudflared/0 [idle] active: 
+  chrony/0 [idle] active: 
+  cloudflared-route-provider-one/0 [idle] active: 
+  cloudflared-route-provider-two/0 [idle] active: 
+[32mINFO    [0m integration.test_charm:test_charm.py:30 tunnel status: healthy
+[32mINFO    [0m integration.test_charm:test_charm.py:30 tunnel status: healthy
