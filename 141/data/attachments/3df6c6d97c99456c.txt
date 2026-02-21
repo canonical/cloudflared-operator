@@ -1,0 +1,30 @@
+[32mINFO    [0m juju.model:__init__.py:2301 Deploying ch:amd64/noble/ubuntu-26
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  cloudflared/0 [idle] active: 
+  chrony/0 [idle] active: 
+  cloudflared-route-provider-one/0 [idle] active: 
+  cloudflared-route-provider-two/0 [idle] active: 
+  dnsmasq/0 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  dnsmasq/0 [allocating] waiting: waiting for machine
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  cloudflared/0 [idle] active: 
+  chrony/0 [idle] active: 
+  cloudflared-route-provider-one/0 [idle] active: 
+  cloudflared-route-provider-two/0 [idle] active: 
+  dnsmasq/0 [idle] active: 
+[32mINFO    [0m integration.conftest:conftest.py:63 created tunnel 53238279-03e0-4abd-bdb8-3a43f7623927
+[32mINFO    [0m integration.test_charm:test_charm.py:128 use dnsmasq nameserver: 10.145.218.149
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  cloudflared/0 [executing] active: 
+  chrony/0 [idle] active: 
+  cloudflared-route-provider-one/0 [executing] active: 
+  cloudflared-route-provider-two/0 [idle] active: 
+  dnsmasq/0 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  cloudflared/0 [idle] active: 
+  chrony/0 [idle] active: 
+  cloudflared-route-provider-one/0 [idle] active: 
+  cloudflared-route-provider-two/0 [idle] active: 
+  dnsmasq/0 [idle] active: 
+[32mINFO    [0m integration.test_charm:test_charm.py:30 tunnel status: healthy

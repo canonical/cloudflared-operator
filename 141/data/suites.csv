@@ -1,0 +1,32 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"
+    arrange: deploy the cloudflared charm and cloudflared-route provider charms.
+    act: provide cloudflared tunnel token with a specific nameserver setting for cloudflared
+        using cloudflared-route provider charms.
+    assume: cloudflared tunnels should use the given nameserver.
+    ","63163","test_nameserver","tests.integration","2026-02-21","passed","2026-02-21","","test_charm","",""
+"
+    arrange: deploy the cloudflared charm.
+    act: update the charmed-cloudflared-snap-channel charm configuration.
+    assume: cloudflared charm should refresh all charmed-cloudflared snap instances.
+    ","25207","test_update_snap_channel","tests.integration","2026-02-21","passed","2026-02-21","","test_charm","",""
+"
+    arrange: deploy the cloudflared charm and cloudflared-route provider charms.
+    act: provide some cloudflared tunnel tokens using cloudflared-route provider charms.
+    assume: cloudflared tunnels provided in the integration is up and healthy.
+    ","132342","test_cloudflared_route_integration","tests.integration","2026-02-21","passed","2026-02-21","","test_charm","",""
+"
+    arrange: create a tunnel token juju secret without granting the secret access to the charm.
+    act: configure the charm with the incorrect juju secret.
+    assume: cloudflared charm should enter error state.
+    ","19936","test_secret_config_permission","tests.integration","2026-02-21","passed","2026-02-21","","test_charm","",""
+"
+    arrange: deploy the cloudflared charm.
+    act: provide the tunnel-token charm config.
+    assume: cloudflared tunnels provided in the charm config is up and healthy
+    ","130595","test_tunnel_token_config","tests.integration","2026-02-21","passed","2026-02-21","","test_charm","",""
+"
+    arrange: deploy the cloudflared charm and cloudflared-route provider charms.
+    act: remove the cloudflared charm.
+    assume: cloudflared charm should uninstall all charmed-cloudflared snap instances.
+    ","16579","test_remove","tests.integration","2026-02-21","passed","2026-02-21","","test_charm","",""
