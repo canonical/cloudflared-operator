@@ -1,0 +1,5 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  cloudflared/0 [executing] active: 
+  chrony/0 [idle] active: 
+  cloudflared-route-provider-one/0 [idle] active: 
+  cloudflared-route-provider-two/0 [idle] active:
