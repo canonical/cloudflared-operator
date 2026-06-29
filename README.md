@@ -1,3 +1,9 @@
+> [!WARNING]
+> **This repository has moved.**
+>
+> Development of this project now happens in the
+> [canonical/cloudflared-operators](https://github.com/canonical/cloudflared-operators).
+
 [![CharmHub Badge](https://charmhub.io/cloudflared/badge.svg)](https://charmhub.io/cloudflared)
 [![Publish to edge](https://github.com/canonical/cloudflared-operator/actions/workflows/publish_charm.yaml/badge.svg)](https://github.com/canonical/cloudflared-operator/actions/workflows/publish_charm.yaml)
 [![Promote charm](https://github.com/canonical/cloudflared-operator/actions/workflows/promote_charm.yaml/badge.svg)](https://github.com/canonical/cloudflared-operator/actions/workflows/promote_charm.yaml)
